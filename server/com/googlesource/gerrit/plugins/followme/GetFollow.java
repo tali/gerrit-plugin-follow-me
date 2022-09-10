@@ -1,4 +1,4 @@
-// Copyright (C) 2013 The Android Open Source Project
+// Copyright (C) 2022 Siemens Mobility GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
-import com.google.gerrit.extensions.restapi.RestModifyView;
+import com.google.gerrit.extensions.restapi.RestReadView;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.IdentifiedUser;
@@ -33,8 +33,8 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Vector;
+import java.util.List;
+import java.util.ArrayList;
 import org.eclipse.jgit.lib.ObjectInserter;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
@@ -44,86 +44,75 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 
-import com.googlesource.gerrit.plugins.followme.ChangeFollow.Input;
-import com.googlesource.gerrit.plugins.followme.ChangeFollow.FollowInfo;
+import com.googlesource.gerrit.plugins.followme.GetFollow.FollowInfo;
 
 @Singleton
-class ChangeFollow implements RestModifyView<ChangeResource, Input> {
-  static class Input {
-    String reference;
-    boolean doUpdate;
-    boolean returnVersion;
-    boolean returnChanges;
-  }
+class GetFollow implements RestReadView<ChangeResource> {
+
   static class FollowInfo {
     boolean onReviewBranch;
-    boolean canUpdate;
-    int newPatchsetId;
+    boolean validReviewTarget;
     String version;
-    Collection<String> changedPaths;
+    String followVersion;
+    String followBranch;
+    String reviewTarget;
+    String reviewFiles;
   }
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
   private final GitRepositoryManager gitManager;
   private final Configuration cfg;
+  private final FollowPreconditions preconditions;
   private final UpdateUtil updateUtil;
 
   @Inject
-  ChangeFollow(
+  GetFollow(
       GitRepositoryManager gitManager,
       Configuration cfg,
+      FollowPreconditions preconditions,
       UpdateUtil updateUtil) {
     this.gitManager = gitManager;
     this.cfg = cfg;
+    this.preconditions = preconditions;
     this.updateUtil = updateUtil;
   }
 
   @Override
-  public Response<FollowInfo> apply(ChangeResource rsrc, Input input) throws IOException, RestApiException, ConfigInvalidException, UpdateException {
-//    preConditions.assertUpdatePermission(rsrc);
-//    preConditions.assertCanBeUpdated(rsrc, input);
+  public Response<FollowInfo> apply(ChangeResource rsrc) throws IOException, RestApiException, ConfigInvalidException, UpdateException {
+    preconditions.assertAddPatchsetPermission(rsrc);
 
-    logger.atSevere().log("FollowMe input %s", input);
     FollowInfo resp = new FollowInfo();
     Change change = rsrc.getChange();
     resp.onReviewBranch = (change.getDest().branch().equals(cfg.getReviewBranch()));
     if (!resp.onReviewBranch) {
-      logger.atSevere().log("FollowMe wrong branch %s != %s", change.getDest().branch(), cfg.getReviewBranch());
-      resp.canUpdate = false;
       return Response.ok(resp);
     }
     CurrentUser user = rsrc.getUser();
 
-    String reference = input.reference;
-    if (reference == null) {
-      reference = cfg.getFollowBranch();
-    }
-    logger.atSevere().log("FollowMe ChangeUpdate.apply id=%s key=%s reference=%s", change.getId(), change.getKey(), reference);
+    logger.atFine().log("FollowMe GET id=%s key=%s", change.getId(), change.getKey());
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
         UpdateTree update = new UpdateTree(repo, change, updateUtil);
     ) {
-      if (input.returnChanges) {
-        resp.changedPaths = new Vector();
-      }
-      update.follow(reference, resp.changedPaths);
+      update.useReviewTargetFooter(cfg.getReviewTargetFooter());
+      resp.validReviewTarget = update.isValidReviewTarget();
+      update.useReviewFilesFooter(cfg.getReviewFilesFooter());
 
-      if (input.returnVersion || input.doUpdate) {
-        resp.version = update.getVersion(cfg.getVersionPrefix(), reference);
-        logger.atSevere().log("FollowMe refernce %s", resp.version);
+      resp.followBranch = cfg.getFollowBranch();
+      update.useFollowBranch(cfg.getFollowBranch());
+      resp.followVersion = update.getFollowVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
+
+      resp.validReviewTarget = update.isValidReviewTarget();
+      if (!resp.validReviewTarget) {
+        return Response.ok(resp);
       }
-      if (update.isCurrent()) {
-        resp.canUpdate = false;
-      } else {
-        resp.canUpdate = true;
-        if (input.doUpdate) {
-          resp.newPatchsetId = update.createPatchset(user, cfg.getVersionFooter(), resp.version, rsrc.getNotes()).get();
-        }
-      }
+
+      resp.reviewTarget = update.getReviewTarget();
+      resp.reviewFiles = update.getReviewFiles();
+      resp.version = update.getTargetVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
     }
-    logger.atSevere().log("FollowMe onReviewBranch=%s, canUpdate=%s newPatchsetId=%s version=%s changedPaths=%s", resp.onReviewBranch, resp.canUpdate, resp.newPatchsetId, resp.version, resp.changedPaths);
     return Response.ok(resp);
   }
 

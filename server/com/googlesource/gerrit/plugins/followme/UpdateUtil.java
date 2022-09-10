@@ -1,4 +1,4 @@
-// Copyright (C) 2013 The Android Open Source Project
+// Copyright (C) 2022 Siemens Mobility GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,8 +39,9 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
+import java.lang.IllegalArgumentException;
 import java.io.IOException;
-import java.util.Collection;
+import java.util.List;
 import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectInserter;
@@ -82,28 +83,29 @@ class UpdateUtil {
 
   RevCommit getReferenceCommit(Repository repo, RevWalk rw, String refName) throws IOException {
     Ref refRef = repo.findRef(refName);
+    if (refRef == null)
+      return null;
+
     ObjectId refId = repo.findRef(refName).getObjectId();
+    if (refId == null)
+      return null;
 
     return rw.parseCommit(refId);
   }
 
   private boolean hasChangeId(String message, int start) {
-    return message.indexOf("Change-Id:", start) >= 0;
+    return message.indexOf("\nChange-Id:", start) >= 0;
   }
 
-  public String insertFooter(String oldMessage, String key, String value) {
+  public String insertFooters(String oldMessage, String key, String values) {
     final StringBuilder message = new StringBuilder();
 
     // search for start and end of any existing footer within the last paragraph
-    int end = -1;
     int start = oldMessage.lastIndexOf("\n\n");
     boolean existingFooter = false;
     if (start >= 0) {
-      existingFooter = hasChangeId(oldMessage, start);
+      existingFooter = hasChangeId(oldMessage, start + 1);
       start = oldMessage.indexOf("\n" + key + ":", start + 1);
-      if (start >= 0) {
-        end = oldMessage.indexOf("\n", start + 1) + 1;
-      }
     }
     if (start >= 0) {
         // include message before old footer
@@ -116,33 +118,51 @@ class UpdateUtil {
       // start new footer paragraph
       message.append("\n");
     }
-    message.append(key);
-    message.append(": ");
-    message.append(value);
-    message.append("\n");
-    if (end > 0) {
-      message.append(oldMessage.substring(end));
+    // append our new footer entries
+    for (String value : values.split("\n")) {
+      value = value.strip();
+      if (value.isEmpty()) continue;
+
+      message.append(key);
+      message.append(": ");
+      message.append(value);
+      message.append("\n");
+    }
+    // append the rest of the original footers
+    while (start >= 0) {
+      // skip this line
+      start = oldMessage.indexOf("\n", start + 1);
+      // copy everything up to the next footer with our key
+      int next = oldMessage.indexOf("\n" + key + ":", start);
+      if (next > 0) {
+        message.append(oldMessage.substring(start + 1, next + 1));
+        start = next;
+      } else {
+        message.append(oldMessage.substring(start + 1));
+        start = -1;
+      }
     }
 
     return message.toString();
   }
 
-  public PatchSet.Id createPatchset(
+  public int createPatchset(
         Repository repo, RevWalk rw, ObjectInserter inserter,
         CurrentUser user,
-        Change change, RevCommit updated, String version,
+        Change change, RevCommit updated, String patchsetMsg,
         ChangeNotes notes
   ) throws IOException, BadRequestException, ConfigInvalidException, UpdateException, RestApiException {
     PatchSet.Id psId = ChangeUtil.nextPatchSetId(repo, change.currentPatchSetId());
 
-    StringBuilder message = new StringBuilder("Patch Set ").append(psId.get()).append(": ");
-    message.append("Updated content following ").append(version);
+    StringBuilder builder = new StringBuilder("Created patch set ").append(psId.get()).append(": ");
+    builder.append(patchsetMsg);
+    String message = builder.toString();
 
     PatchSetInserter patchset =
         patchSetInserterFactory
             .create(notes, psId, updated)
             .setSendEmail(!change.isWorkInProgress())
-            .setMessage(message.toString());
+            .setMessage(patchsetMsg);
 
     try (BatchUpdate bu = updateFactory.create(change.getProject(), user, TimeUtil.now())) {
       bu.setRepository(repo, rw, inserter);
@@ -150,10 +170,10 @@ class UpdateUtil {
       bu.addOp(change.getId(), patchset);
       bu.execute();
     }
+    logger.atInfo().log(patchsetMsg);
 
-    return psId;
+    return psId.get();
   }
-
 
   public static RevCommit getCurrentCommit(Repository repo, RevWalk rw, Change change) throws IOException {
     return rw.parseCommit(repo.exactRef(change.currentPatchSetId().toRefName()).getObjectId());

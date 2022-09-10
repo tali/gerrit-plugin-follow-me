@@ -15,26 +15,15 @@
 package com.googlesource.gerrit.plugins.followme;
 
 import com.google.gerrit.extensions.registration.DynamicSet;
-import com.google.gerrit.extensions.restapi.RestApiModule;
 import com.google.gerrit.extensions.webui.JavaScriptPlugin;
 import com.google.gerrit.extensions.webui.WebUiPlugin;
-import static com.google.gerrit.server.change.ChangeResource.CHANGE_KIND;
-import static com.google.gerrit.server.change.RevisionResource.REVISION_KIND;
 
-import com.google.inject.AbstractModule;
+import com.google.inject.servlet.ServletModule;
 
-public class PluginModule extends AbstractModule {
+public class HttpModule extends ServletModule {
   @Override
-  protected void configure() {
-
-    install(
-        new RestApiModule() {
-          @Override
-          protected void configure() {
-            post(CHANGE_KIND, "follow").to(PostFollow.class);
-            get(CHANGE_KIND, "follow").to(GetFollow.class);
-          }
-        }
-    );
+  protected void configureServlets() {
+    DynamicSet.bind(binder(), WebUiPlugin.class)
+        .toInstance(new JavaScriptPlugin("follow-me.js"));
   }
 }

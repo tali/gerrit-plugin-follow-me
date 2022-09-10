@@ -1,4 +1,4 @@
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2022 Siemens Mobility GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,8 +41,10 @@ class Configuration {
 
   private final String followBranch;
   private final String reviewBranch;
-  private final String versionFooter;
+  private final String reviewFilesFooter;
+  private final String reviewTargetFooter;
   private final String versionPrefix;
+  private final String versionDropPrefix;
 
   private final PluginConfig cfg;
   private File pluginData;
@@ -57,8 +59,10 @@ class Configuration {
 
     this.followBranch = cfg.getString("followBranch", "refs/heads/master");
     this.reviewBranch = cfg.getString("reviewBranch", "refs/heads/review");
-    this.versionFooter = cfg.getString("versionFooter", "Follow-Me");
+    this.reviewFilesFooter = cfg.getString("reviewFilesFooter", "Review-Files");
+    this.reviewTargetFooter = cfg.getString("reviewTargetFooter", "Review-Target");
     this.versionPrefix = cfg.getString("versionPrefix", "refs/tags/");
+    this.versionDropPrefix = cfg.getString("versionDropPrefix", "refs/tags/");
   }
 
   public String getFollowBranch() {
@@ -69,11 +73,19 @@ class Configuration {
     return reviewBranch;
   }
 
-  public String getVersionFooter() {
-    return versionFooter;
+  public String getReviewFilesFooter() {
+    return reviewFilesFooter;
+  }
+
+  public String getReviewTargetFooter() {
+    return reviewTargetFooter;
   }
 
   public String getVersionPrefix() {
     return versionPrefix;
+  }
+
+  public String getVersionDropPrefix() {
+    return versionDropPrefix;
   }
 }

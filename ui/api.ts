@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2022 Siemens Mobility GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,39 +15,38 @@
  * limitations under the License.
  */
 
-import {ChangeInfo, RevisionInfo} from '@gerritcodereview/typescript-api/rest-api';
+import {ChangeInfo} from '@gerritcodereview/typescript-api/rest-api';
 import {RestPluginApi} from '@gerritcodereview/typescript-api/rest';
 
 export declare interface FollowInfo {
   on_review_branch: boolean;
-  can_update: boolean;
+  valid_review_target: boolean;
   new_patchset_id: number;
   version: string;
-  changed_paths: string[];
+  follow_version: string;
+  follow_branch: string;
+  review_target: string;
+  review_files: string;
+  added_paths: string[];
+  updated_paths: string[];
+  removed_paths: string[];
 }
 
-export async function testChangeUpdate(restApi: RestPluginApi, change: ChangeInfo, revision: RevisionInfo): Promise<FollowInfo> {
-  console.warn("testChangeUpdate change", change, revision);
+export async function changeFollowGet(restApi: RestPluginApi, change: ChangeInfo): Promise<FollowInfo> {
   const endpoint = `/changes/${change.id}/follow`;
-  const content = {
-    do_update: false,
-    return_version: true,
-    return_changes: true,
-  };
-  const resp = await restApi.post<FollowInfo>(endpoint, content)
-  console.warn("success POST", endpoint, content, resp);
+  const resp = await restApi.get<FollowInfo>(endpoint)
+  console.debug("success GET", endpoint, resp);
   return resp;
 }
 
-export async function doChangeUpdate(restApi: RestPluginApi, change: ChangeInfo, revision: RevisionInfo): Promise<FollowInfo> {
-  console.warn("doChangeUpdate change", change, revision);
+export async function changeFollowPost(restApi: RestPluginApi, change: ChangeInfo, doUpdate: boolean, reviewTarget: string, reviewFiles: string): Promise<FollowInfo> {
   const endpoint = `/changes/${change.id}/follow`;
   const content = {
-    do_update: true,
-    return_version: true,
-    return_changes: true,
+    do_update: doUpdate,
+    new_review_target: reviewTarget,
+    new_review_files: reviewFiles,
   };
   const resp = await restApi.post<FollowInfo>(endpoint, content)
-  console.warn("success POST", endpoint, content, resp);
+  console.debug("success POST", endpoint, content, resp);
   return resp;
 }

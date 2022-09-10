@@ -9,10 +9,13 @@ gerrit_plugin(
     manifest_entries = [
         "Gerrit-PluginName: follow-me",
         "Gerrit-Module: com.googlesource.gerrit.plugins.followme.PluginModule",
+        "Gerrit-HttpModule: com.googlesource.gerrit.plugins.followme.HttpModule",
         "Implementation-Title: Post-Commit review by following a branch",
     ],
     resource_jars = ["//plugins/follow-me/ui:follow-me"],
-    resources = glob(["Documentation/*.md"]),
+    resource_strip_prefix = "plugins/follow-me/resources",
+    resources = glob(["resources/**/*"]),
+
 )
 
 junit_tests(

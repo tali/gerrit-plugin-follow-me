@@ -8,75 +8,122 @@ which follows some other 'to-be-reviewed' branch by copying the contents of the
 This allows a _post-commit_ review using Gerrit's workflow.
 
 
-Use cases
----------
-
-The workflow of creating an extra 'review' branch is helpful when the
-'to-be-reviewed' branch already exists and has not yet been reviewed in the
-requested quality.
-
-While a _pre-commit_ review is generally preferable to a _post-commit_ workflow,
-there are valid reasons for a review of an existing branch.
-
-For example:
-
-* Development was started without a review workflow,
-  and mandatory reviews are requested later-on.
-  It's easy to start reviews for new changes,
-  but reviewing the exisiting codebase is much more ambitious.
-* Especially for safety critical software, additional reviews by an
-  independent department may be required.
-  These reviews often concentrate on other aspects of the code,
-  e.g. they do not have to judge whether the code is maintainable,
-  but just have to confirm that the code is ready/safe for production.
-
-Often the granularity of these new reviews does not align with the
-original changes on the 'to-be-reviewed' branch.
-Individual review of the original changes may be too fine-grained because it
-would require to intermittent states which never made it into the final
-version.
-On the other hand, just importing a new version and reviewing the complete diff
-as one change is not viable for any real codebase.
-
-So we need a way to split these reviews into multiple smaller parts.
-Depending on the codebase and the changes made, these smaller reviews can
-concentrate on individual files, components or on special types of files.
-
-The 'review' branch is used to document how much of the 'to-be-reviewed' branch
-has already been reviewed.
-
-
 Functionality
 -------------
 
-TBD TODO
+This plugin can be used to create new Patch Sets following the contents of
+another branch or version.
 
-### Create new review
+Already reviewed parts are submitted to the 'review' branch so that the
+review progress is always tracked for all files.
 
-* **TBD** show list of files which are not up-to-date in the 'review' branch
-* **TBD** allow to select files for review
-* **TBD** create new change containing the selected files
+### Rule-based selection of files
 
-### Add new file content to existing changes
+Instead of manually selecting individual files, rules can be used to automatically
+select all matching files.
+The Git `.gitignore` mechanism is used.
 
-* **TBD** show when files in the review change have changed within the 'to-be-reviewed' branch
-* **TBD** allow to create a new patchset with new versions
-* **TBD** allow to select new files to add to the review
+The rules for selecting files are stored in footer lines within the commit message.
+This makes it easy to update the review with the same set of files targeting a new
+version which is to-be-reviewed.
+
+### Preview during creation of review rules
+
+A preview for new review selections is shown so that it is easier to pick
+the right rules for the file selection.
+
+### Create new Patchsets based on a specified selection
+
+Based on the selected rules for file selection, a new Patchset can be created
+which contains all the matching files from the review target.
+
+When creating a new patchset, both the Review-Files as well as the
+Review-Target selection can be changed.
+
+### Verify that a change adheres to the review selection
+
+TBD NOT IMPLEMENTED
+
+The rules for selecting files are stored in footer lines within the commit message.
+This makes it easy to check that the all relevant files are part of the review commit,
+without having to list all potential files by hand.
+
+When the rule is correct then the user can be sure that any matching files are
+part of the review.
+In order to guarantee this property, a submit requirement can be configured to
+prevent the change from being submitted when the footer and the file contents
+do not match.
 
 ### Create merge commit to synchronize branches
 
+TBD NOT IMPLEMENTED
+
 * **TBD** create merge commit to selected tag
+
+### Reparent instead of rebase
+
+TBD NOT IMPLEMENTED
+
+* **TBD** allow to change the parent of the change without changing the target tree
 
 
 Example Workflows
 -----------------
 
-TBD
+The base workfow in all scenarios is about the same:
 
-### Initial review
+* Create new empty change on 'review' branch
+* Click the 'select' button, choose a subset of files which are suitable for review
+* Click the 'update' button, a new Patchset is created which contains the selected files
+* Review files
+* Rework on 'to-be-reviewed' branch
+* Click the 'select' button, choose new version
+* Click the 'update' button to create a new Patchset with the reworked code
+* Repeat review until the selected subset of the code meets the acceptance criteria
+* Submit the change to the 'review' branch
+* Repeat process with other subsets of files until the complete code is reviewed
 
-TBD
+When these steps are repeated, then the 'review' branch will follow the
+'to-be-reviewed' branch.
 
-### Additional review
+This process can be used in different ways, by selecting Review-Target and
+Review-Files accordingly.
 
-TBD
+### Review already released versions
+
+One change is created per version, this version is selected as Review-Target.
+When necessary, multiple changes with different Review-Files can be created
+for each version.
+
+As review findings cannot be corrected within the already released versions,
+follow-up tickets should be created and referenced in the change message.
+Gerrit can still be used to document and discuss all findings.
+Once the followup ticket is closed, the Gerrit change can be submitted, too.
+
+### Review of externally managed code
+
+When code is managed in a legacy system (e.g. SVN, ClearCase) then pre-commit
+reviews are not easily possible.
+Usually commits are made directly on a development branch and cannot be
+amended later.
+
+When the code is imported to a Git branch, then this branch can be used
+as Review-Target for Gerrit reviews.
+
+Whenever there are new changes to some part of the 'to-be-review' branch,
+a new Gerrit change is created to review these changes.
+The Review-Files specification can be used to review a relevant subset of
+all the changes made in the external subset.
+
+Review findings are directly reworked in the external system and then
+imported to the 'to-be-reviewed' branch in Gerrit.
+They can be incorporated as new Patch Set by updating the Review-Target
+to the new version.
+
+Once this change stabilizes and there are no more review findings the
+Gerrit change is submitted.
+
+Note that this process works best when it is possible to coordinate
+develoment in the external system with the review process,
+so that no new unrelated changes are introduced to the files which
+are currently being reviewed.
