@@ -170,7 +170,7 @@ class UpdateUtil {
       bu.addOp(change.getId(), patchset);
       bu.execute();
     }
-    logger.atInfo().log(patchsetMsg);
+    logger.atInfo().log("new patchset: %s", patchsetMsg);
 
     return psId.get();
   }
