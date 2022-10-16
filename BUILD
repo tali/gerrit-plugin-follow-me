@@ -2,7 +2,6 @@ load("@rules_java//java:defs.bzl", "java_library")
 load("//tools/bzl:junit.bzl", "junit_tests")
 load("//tools/bzl:plugin.bzl", "PLUGIN_DEPS", "PLUGIN_TEST_DEPS", "gerrit_plugin")
 
-
 gerrit_plugin(
     name = "follow-me",
     srcs = glob(["server/**/*.java"]),
@@ -15,7 +14,6 @@ gerrit_plugin(
     resource_jars = ["//plugins/follow-me/ui:follow-me"],
     resource_strip_prefix = "plugins/follow-me/resources",
     resources = glob(["resources/**/*"]),
-
 )
 
 junit_tests(
