@@ -124,6 +124,9 @@ class UpdateTree implements AutoCloseable {
 
   public void useFollowBranch(String branchName) throws IOException {
     followBranch = updateUtil.getReferenceCommit(repo, rw, branchName);
+    if (followBranch == null) {
+      logger.atWarning().log("followBranch %s does not exist", branchName);
+    }
   }
 
   public String getReviewTarget() {
@@ -282,6 +285,7 @@ class UpdateTree implements AutoCloseable {
   }
 
   private String _getVersion(RevCommit commit, String prefix, String dropPrefix) throws IOException {
+    assert commit != null;
     for (Ref ref : repo.getRefDatabase().getTipsWithSha1(commit)) {
       var name = ref.getName();
       if (name.startsWith(prefix)) {
@@ -300,6 +304,9 @@ class UpdateTree implements AutoCloseable {
   }
 
   public String getFollowVersion(String prefix, String dropPrefix) throws IOException {
+    if (followBranch == null) {
+      return "";
+    }
     return _getVersion(followBranch, prefix, dropPrefix);
   }
 
