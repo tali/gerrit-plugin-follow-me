@@ -36,5 +36,6 @@ public class PluginModule extends AbstractModule {
           }
         }
     );
+    install(new HasCurrentReviewTargetOperand.Module());
   }
 }

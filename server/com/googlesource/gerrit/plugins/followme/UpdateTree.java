@@ -242,6 +242,10 @@ class UpdateTree implements AutoCloseable {
     this.updatedTree = cache.writeTree(inserter);
   }
 
+  boolean hasCurrentPaths() throws IOException {
+    RevTree currentTree = rw.parseTree(current.getTree());
+    return this.updatedTree.equals(currentTree);
+  }
   /**
    * Walk all paths and TBD
    */
