@@ -31,6 +31,8 @@ import java.io.IOException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 
+import static java.util.Objects.requireNonNull;
+
 @Singleton
 class GetFollow implements RestReadView<ChangeResource> {
 
@@ -57,10 +59,10 @@ class GetFollow implements RestReadView<ChangeResource> {
       Configuration cfg,
       FollowPreconditions preconditions,
       UpdateUtil updateUtil) {
-    this.gitManager = gitManager;
-    this.cfg = cfg;
-    this.preconditions = preconditions;
-    this.updateUtil = updateUtil;
+    this.gitManager = requireNonNull(gitManager);
+    this.cfg = requireNonNull(cfg);
+    this.preconditions = requireNonNull(preconditions);
+    this.updateUtil = requireNonNull(updateUtil);
   }
 
   @Override

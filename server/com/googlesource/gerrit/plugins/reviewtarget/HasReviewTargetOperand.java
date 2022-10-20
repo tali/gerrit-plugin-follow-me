@@ -24,6 +24,8 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
+import static java.util.Objects.requireNonNull;
+
 @Singleton
 public class HasReviewTargetOperand implements ChangeQueryBuilder.ChangeHasOperandFactory {
 
@@ -41,7 +43,7 @@ public class HasReviewTargetOperand implements ChangeQueryBuilder.ChangeHasOpera
 
   @Inject
   HasReviewTargetOperand(MatchReviewTarget matchReviewTarget) {
-    this.matchReviewTarget = matchReviewTarget;
+    this.matchReviewTarget = requireNonNull(matchReviewTarget);
   }
 
   @Override

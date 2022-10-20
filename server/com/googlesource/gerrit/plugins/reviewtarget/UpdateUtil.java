@@ -43,6 +43,8 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 
+import static java.util.Objects.requireNonNull;
+
 
 @Singleton
 class UpdateUtil {
@@ -60,10 +62,10 @@ class UpdateUtil {
       BatchUpdate.Factory updateFactory,
       NotifyResolver notifyResolver,
       ChangeKindCache changeKindCache) {
-    this.patchSetInserterFactory = patchSetInserterFactory;
-    this.changeKindCache = changeKindCache;
-    this.updateFactory = updateFactory;
-    this.notifyResolver = notifyResolver;
+    this.patchSetInserterFactory = requireNonNull(patchSetInserterFactory);
+    this.changeKindCache = requireNonNull(changeKindCache);
+    this.updateFactory = requireNonNull(updateFactory);
+    this.notifyResolver = requireNonNull(notifyResolver);
   }
 
   RevCommit getReferenceCommit(Repository repo, RevWalk rw, String refName) throws IOException {

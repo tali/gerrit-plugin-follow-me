@@ -21,7 +21,11 @@ import com.google.gerrit.server.config.PluginConfig;
 import com.google.gerrit.server.config.PluginConfigFactory;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import org.eclipse.jgit.annotations.NonNull;
+
 import java.io.File;
+
+import static java.util.Objects.requireNonNull;
 
 @Singleton
 class Configuration {
@@ -42,8 +46,8 @@ class Configuration {
       PluginConfigFactory pluginConfigFactory,
       @PluginName String pluginName,
       @PluginData File pluginData) {
-    this.cfg = pluginConfigFactory.getFromGerritConfig(pluginName);
-    this.pluginData = pluginData;
+    this.cfg = requireNonNull(pluginConfigFactory.getFromGerritConfig(pluginName));
+    this.pluginData = requireNonNull(pluginData);
 
     this.followBranch = cfg.getString("followBranch", "refs/heads/master");
     this.reviewBranch = cfg.getString("reviewBranch", "refs/heads/review");

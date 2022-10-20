@@ -11,6 +11,7 @@ import org.eclipse.jgit.lib.Repository;
 
 import java.io.IOException;
 
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 @Singleton
@@ -26,9 +27,9 @@ public class MatchReviewTarget {
       UpdateUtil updateUtil,
       Configuration cfg
   ) {
-    this.gitManager = gitManager;
-    this.updateUtil = updateUtil;
-    this.cfg = cfg;
+    this.gitManager = requireNonNull(gitManager);
+    this.updateUtil = requireNonNull(updateUtil);
+    this.cfg = requireNonNull(cfg);
   }
 
   boolean checkReviewTarget(Change change) {

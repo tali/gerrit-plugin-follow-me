@@ -23,6 +23,8 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
+import static java.util.Objects.requireNonNull;
+
 @Singleton
 class FollowPreconditions {
   private final Provider<CurrentUser> userProvider;
@@ -32,8 +34,8 @@ class FollowPreconditions {
   public FollowPreconditions(
       Provider<CurrentUser> userProvider,
       PermissionBackend permissionBackend) {
-    this.userProvider = userProvider;
-    this.permissionBackend = permissionBackend;
+    this.userProvider = requireNonNull(userProvider);
+    this.permissionBackend = requireNonNull(permissionBackend);
   }
 
   void assertAddPatchsetPermission(ChangeResource rsrc) throws AuthException {

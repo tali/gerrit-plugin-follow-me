@@ -35,6 +35,8 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 
 import com.googlesource.gerrit.plugins.reviewtarget.PostFollow.Input;
 
+import static java.util.Objects.requireNonNull;
+
 @Singleton
 class PostFollow implements RestModifyView<ChangeResource, Input> {
   static class Input {
@@ -66,10 +68,10 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
       Configuration cfg,
       FollowPreconditions preconditions,
       UpdateUtil updateUtil) {
-    this.gitManager = gitManager;
-    this.cfg = cfg;
-    this.preconditions = preconditions;
-    this.updateUtil = updateUtil;
+    this.gitManager = requireNonNull(gitManager);
+    this.cfg = requireNonNull(cfg);
+    this.preconditions = requireNonNull(preconditions);
+    this.updateUtil = requireNonNull(updateUtil);
   }
 
   @Override

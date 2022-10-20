@@ -50,6 +50,8 @@ import org.eclipse.jgit.treewalk.NameConflictTreeWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 
+import static java.util.Objects.requireNonNull;
+
 
 class UpdateTree implements AutoCloseable {
 
@@ -71,11 +73,11 @@ class UpdateTree implements AutoCloseable {
   private ObjectId updatedTree;
 
   UpdateTree(Repository repo, Change change, UpdateUtil updateUtil) {
-    this.change = change;
-    this.updateUtil = updateUtil;
-    this.repo = repo;
-    this.inserter = repo.newObjectInserter();
-    this.reader = inserter.newReader();
+    this.change = requireNonNull(change);
+    this.updateUtil = requireNonNull(updateUtil);
+    this.repo = requireNonNull(repo);
+    this.inserter = requireNonNull(repo.newObjectInserter());
+    this.reader = requireNonNull(inserter.newReader());
     this.rw = new RevWalk(reader);
   }
 
