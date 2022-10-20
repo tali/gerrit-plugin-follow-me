@@ -29,6 +29,7 @@ window.Gerrit.install(plugin => {
 //  const reporting = plugin.reporting();
 
   plugin.on(EventType.SHOW_CHANGE, async (change: ChangeInfo, _revision: RevisionInfo, _mergeable: boolean) => {
+    if (change.id === undefined) return;
     const info = await changeFollowGet(restApi, change);
     if (!info.on_review_branch) {
       // this change is not managed by our plugin
