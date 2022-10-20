@@ -23,16 +23,16 @@ import {PopupPluginApi} from '@gerritcodereview/typescript-api/popup';
 import {ChangeInfo} from '@gerritcodereview/typescript-api/rest-api';
 
 import {changeFollowPost, FollowInfo} from './api';
-import {BindValueChangeEvent} from './types';
+import {BindValueChangeEvent} from './types';
 
 declare global {
   interface HTMLElementTagNameMap {
-    'gr-fme-change-update-dialog': ChangeUpdateDialog,
+    'gr-select-reviewtarget-dialog': SelectReviewTargetDialog,
   }
 }
 
-@customElement('gr-fme-change-update-dialog')
-export class ChangeUpdateDialog extends LitElement {
+@customElement('gr-select-reviewtarget-dialog')
+export class SelectReviewTargetDialog extends LitElement {
 
   @property({type: Object})
   plugin!: PluginApi;
@@ -105,7 +105,7 @@ export class ChangeUpdateDialog extends LitElement {
     // would we update anything?
     if (this._anyPathChanges())
       return true;
-    if (this.reviewTargetOrig != this.reviewTarget || this.reviewFilesOrig != this.reviewFiles)
+    if (this.reviewTargetOrig != this.reviewTarget || this.reviewFilesOrig != this.reviewFiles)
       return true;
 
     return false;
@@ -236,15 +236,15 @@ export class ChangeUpdateDialog extends LitElement {
   }
 
   /** read initial properties from the provided REST GET result */
-  initialize(followme: FollowInfo) {
-    this.version = followme.version;
-    this.followBranch = followme.follow_branch;
-    this.followVersion = followme.follow_version;
-    this.validReviewTarget = followme.valid_review_target;
+  initialize(info: FollowInfo) {
+    this.version = info.version;
+    this.followBranch = info.follow_branch;
+    this.followVersion = info.follow_version;
+    this.validReviewTarget = info.valid_review_target;
 
     if (this.validReviewTarget) {
-      this.reviewTarget = followme.review_target;
-      this.reviewFiles = followme.review_files
+      this.reviewTarget = info.review_target;
+      this.reviewFiles = info.review_files
     } else {
       // this is a newly created change
       this.reviewTarget = this.followVersion;
@@ -258,12 +258,12 @@ export class ChangeUpdateDialog extends LitElement {
     this.loading = true;
     const restApi = this.plugin.restApi();
     try {
-      const followme = await changeFollowPost(restApi, this.change, false, this.reviewTarget, this.reviewFiles);
-      this.version = followme.version;
-      this.addedPaths = followme.added_paths || [];
-      this.updatedPaths = followme.updated_paths || [];
-      this.removedPaths = followme.removed_paths || [];
-      this.validReviewTarget = followme.valid_review_target;
+      const info = await changeFollowPost(restApi, this.change, false, this.reviewTarget, this.reviewFiles);
+      this.version = info.version;
+      this.addedPaths = info.added_paths || [];
+      this.updatedPaths = info.updated_paths || [];
+      this.removedPaths = info.removed_paths || [];
+      this.validReviewTarget = info.valid_review_target;
     } catch (e) {
       this.version = "<error>";
       this.addedPaths = this.updatedPaths = this.removedPaths = [];

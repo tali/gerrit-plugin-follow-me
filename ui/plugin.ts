@@ -20,42 +20,38 @@ import {ChangeInfo, RevisionInfo} from '@gerritcodereview/typescript-api/rest-ap
 import {ActionType} from '@gerritcodereview/typescript-api/change-actions';
 
 import {changeFollowGet} from './api';
-import {ChangeUpdateDialog} from './followme_dialog';
+import {SelectReviewTargetDialog} from './dialog';
 
 
 window.Gerrit.install(plugin => {
   const restApi = plugin.restApi();
-  var followAction: string | null;
+  var selectAction: string | null;
 //  const reporting = plugin.reporting();
 
   plugin.on(EventType.SHOW_CHANGE, async (change: ChangeInfo, _revision: RevisionInfo, _mergeable: boolean) => {
-    const followme = await changeFollowGet(restApi, change);
-    if (!followme.on_review_branch) {
-      console.debug("followme not onReviewBranch");
+    const info = await changeFollowGet(restApi, change);
+    if (!info.on_review_branch) {
+      // this change is not managed by our plugin
       return;
     }
     var actions = plugin.changeActions();
-    if (followAction != null) {
-      actions.remove(followAction);
+    if (selectAction != null) {
+      actions.remove(selectAction);
     }
-    if (followme.on_review_branch) {
-      followAction = actions.add(ActionType.REVISION, 'update-review');
-      actions.setEnabled(followAction, true);
-      actions.setLabel(followAction, "Select");
-      actions.setTitle(followAction, `Change Review-Target or Review-Files`);
-      actions.setIcon(followAction, "rule");
-      actions.addTapListener(followAction, async () => {
-        const popupApi = await plugin.popup();
-        const openDialog = await popupApi.open();
-        var dialog = new ChangeUpdateDialog();
-        dialog.initialize(followme);
-        dialog.plugin = plugin;
-        dialog.change = change;
-        dialog.popupApi = popupApi;
-        openDialog.appendContent(dialog);
-      });
-    }
+    selectAction = actions.add(ActionType.REVISION, 'select-reviewtarget');
+    actions.setEnabled(selectAction, true);
+    actions.setLabel(selectAction, "Select");
+    actions.setTitle(selectAction, `Change Review-Target or Review-Files`);
+    actions.setIcon(selectAction, "rule");
+    actions.addTapListener(selectAction, async () => {
+      const popupApi = await plugin.popup();
+      const openDialog = await popupApi.open();
+      var dialog = new SelectReviewTargetDialog();
+      dialog.initialize(info);
+      dialog.plugin = plugin;
+      dialog.change = change;
+      dialog.popupApi = popupApi;
+      openDialog.appendContent(dialog);
+    });
   });
-
-  console.debug("follow-me plugin loaded");
 });

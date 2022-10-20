@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.gerrit.extensions.annotations.Exports;
 import com.google.gerrit.index.query.PostFilterPredicate;
@@ -25,34 +25,34 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 @Singleton
-public class HasCurrentReviewTargetOperand implements ChangeQueryBuilder.ChangeHasOperandFactory {
+public class HasReviewTargetOperand implements ChangeQueryBuilder.ChangeHasOperandFactory {
 
   private MatchReviewTarget matchReviewTarget;
-  final static String OPERAND = "current";
+  final static String OPERAND = "selected";
 
   public static class Module extends AbstractModule {
     @Override
     protected void configure() {
       bind(ChangeQueryBuilder.ChangeHasOperandFactory.class)
           .annotatedWith(Exports.named(OPERAND))
-          .to(HasCurrentReviewTargetOperand.class);
+          .to(HasReviewTargetOperand.class);
     }
   }
 
   @Inject
-  HasCurrentReviewTargetOperand(MatchReviewTarget matchReviewTarget) {
+  HasReviewTargetOperand(MatchReviewTarget matchReviewTarget) {
     this.matchReviewTarget = matchReviewTarget;
   }
 
   @Override
   public Predicate<ChangeData> create(ChangeQueryBuilder builder)
       throws QueryParseException {
-    return new ReviewTargetPredicate();
+    return new HasReviewTargetPredicate();
   }
 
-  private class ReviewTargetPredicate extends PostFilterPredicate<ChangeData> {
+  private class HasReviewTargetPredicate extends PostFilterPredicate<ChangeData> {
 
-    ReviewTargetPredicate() {
+    HasReviewTargetPredicate() {
       super("has", OPERAND);
     }
 

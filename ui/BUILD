@@ -4,7 +4,7 @@ load("@npm//@bazel/typescript:index.bzl", "ts_config", "ts_project")
 
 package_group(
     name = "visibility",
-    packages = ["//plugins/follow-me/..."],
+    packages = ["//plugins/reviewtarget/..."],
 )
 
 package(default_visibility = [":visibility"])
@@ -18,7 +18,7 @@ ts_config(
 )
 
 ts_project(
-    name = "follow-me-ts",
+    name = "reviewtarget-ts",
     srcs = glob(
         ["**/*.ts"],
         exclude = ["**/*test*"],
@@ -34,7 +34,7 @@ ts_project(
 )
 
 ts_project(
-    name = "follow-me-ts-tests",
+    name = "reviewtarget-ts-tests",
     srcs = glob(["**/*.ts"]),
     incremental = True,
     out_dir = "_bazel_ts_out_tests",
@@ -47,15 +47,15 @@ ts_project(
 )
 
 gerrit_js_bundle(
-    name = "follow-me",
-    srcs = [":follow-me-ts"],
+    name = "reviewtarget",
+    srcs = [":reviewtarget-ts"],
     entry_point = "_bazel_ts_out/plugin.js",
 )
 
 karma_test(
     name = "karma_test",
     srcs = ["karma_test.sh"],
-    data = [":follow-me-ts-tests"],
+    data = [":reviewtarget-ts-tests"],
 )
 
 plugin_eslint()

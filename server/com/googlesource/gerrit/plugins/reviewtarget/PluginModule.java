@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
-import com.google.gerrit.extensions.registration.DynamicSet;
 import com.google.gerrit.extensions.restapi.RestApiModule;
-import com.google.gerrit.extensions.webui.JavaScriptPlugin;
-import com.google.gerrit.extensions.webui.WebUiPlugin;
+
 import static com.google.gerrit.server.change.ChangeResource.CHANGE_KIND;
-import static com.google.gerrit.server.change.RevisionResource.REVISION_KIND;
 
 import com.google.inject.AbstractModule;
 
@@ -36,6 +33,6 @@ public class PluginModule extends AbstractModule {
           }
         }
     );
-    install(new HasCurrentReviewTargetOperand.Module());
+    install(new HasReviewTargetOperand.Module());
   }
 }

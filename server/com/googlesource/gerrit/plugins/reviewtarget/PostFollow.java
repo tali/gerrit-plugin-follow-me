@@ -12,40 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.entities.Change;
-import com.google.gerrit.entities.PatchSet;
-import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.extensions.restapi.RestModifyView;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.CurrentUser;
-import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.change.ChangeResource;
-import com.google.gerrit.server.change.NotifyResolver;
-import com.google.gerrit.server.update.BatchUpdate;
 import com.google.gerrit.server.update.UpdateException;
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
-import org.eclipse.jgit.lib.ObjectInserter;
-import org.eclipse.jgit.lib.ObjectReader;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.errors.RepositoryNotFoundException;
 
-import com.googlesource.gerrit.plugins.followme.PostFollow.Input;
-import com.googlesource.gerrit.plugins.followme.PostFollow.FollowInfo;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.errors.ConfigInvalidException;
+
+import com.googlesource.gerrit.plugins.reviewtarget.PostFollow.Input;
 
 @Singleton
 class PostFollow implements RestModifyView<ChangeResource, Input> {

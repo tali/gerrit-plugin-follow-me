@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.gerrit.extensions.registration.DynamicSet;
 import com.google.gerrit.extensions.webui.JavaScriptPlugin;
@@ -24,6 +24,6 @@ public class HttpModule extends ServletModule {
   @Override
   protected void configureServlets() {
     DynamicSet.bind(binder(), WebUiPlugin.class)
-        .toInstance(new JavaScriptPlugin("follow-me.js"));
+        .toInstance(new JavaScriptPlugin("reviewtarget.js"));
   }
 }

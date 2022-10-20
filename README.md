@@ -1,7 +1,7 @@
-Gerrit follow-me plugin
-=======================
+Gerrit reviewtarget plugin
+==========================
 
-`follow-me` is a Gerrit plugin to support managing one 'review' Branch,
+`reviewtarget` is a Gerrit plugin to support managing one 'review' Branch,
 which follows some other 'to-be-reviewed' branch by copying the contents of the
 'to-be-reviewed' branch.
 
@@ -98,7 +98,7 @@ for each version.
 As review findings cannot be corrected within the already released versions,
 follow-up tickets should be created and referenced in the change message.
 Gerrit can still be used to document and discuss all findings.
-Once the followup ticket is closed, the Gerrit change can be submitted, too.
+Once the follow-up ticket is closed, the Gerrit change can be submitted, too.
 
 ### Review of externally managed code
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 
@@ -20,15 +20,10 @@ import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
 import com.google.gerrit.extensions.restapi.BadRequestException;
-import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
-import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
-import com.google.gerrit.extensions.restapi.RestModifyView;
 import com.google.gerrit.server.ChangeUtil;
 import com.google.gerrit.server.CurrentUser;
-import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.change.ChangeKindCache;
-import com.google.gerrit.server.change.ChangeResource;
 import com.google.gerrit.server.change.NotifyResolver;
 import com.google.gerrit.server.change.PatchSetInserter;
 import com.google.gerrit.server.notedb.ChangeNotes;
@@ -36,27 +31,17 @@ import com.google.gerrit.server.update.BatchUpdate;
 import com.google.gerrit.server.update.UpdateException;
 import com.google.gerrit.server.util.time.TimeUtil;
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
-import java.lang.IllegalArgumentException;
 import java.io.IOException;
-import java.util.List;
-import org.eclipse.jgit.lib.CommitBuilder;
+
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectInserter;
-import org.eclipse.jgit.lib.ObjectReader;
-import org.eclipse.jgit.lib.FileMode;
-import org.eclipse.jgit.lib.MutableObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.TreeFormatter;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.errors.RepositoryNotFoundException;
 
 
 @Singleton

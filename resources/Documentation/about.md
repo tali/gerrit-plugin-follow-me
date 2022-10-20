@@ -1,5 +1,5 @@
 
-`follow-me` is a Gerrit plugin to support managing one 'review' Branch,
+`reviewtarget` is a Gerrit plugin to support managing one 'review' Branch,
 which follows some other 'to-be-reviewed' branch by copying the contents of the
 'to-be-reviewed' branch.
 
@@ -90,7 +90,7 @@ Examples:
 
 This plugin provides a search operand for changes which are managed by the plugin.
 
-* `has:current_follow-me`: all changes with a `Review-Target:` footer where the contents match the footer specification
+* `has:selected_reviewtarget`: all changes with a `Review-Target:` footer where the contents match the footer specification.
 That can be used to configure a submit requirement, so that only unmodified changes can be submitted.
 
 Example:
@@ -99,5 +99,5 @@ Example:
 [submit-requirement "Review-Target"]
 description = The review target has to be specified by clicking on the SELECT button.
 applicableIf = branch:review
-submittableIf = has:current_follow-me
+submittableIf = has:selected_reviewtarget
 ```

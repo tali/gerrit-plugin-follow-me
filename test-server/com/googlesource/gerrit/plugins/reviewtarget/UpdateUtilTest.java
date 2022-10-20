@@ -12,28 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.googlesource.gerrit.plugins.followme;
+package com.googlesource.gerrit.plugins.reviewtarget;
 
 import static com.google.common.truth.Truth.assertThat;
-import static com.google.gerrit.testing.GerritJUnit.assertThrows;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.google.gerrit.server.change.ChangeKindCache;
 import com.google.gerrit.server.change.NotifyResolver;
 import com.google.gerrit.server.change.PatchSetInserter;
 import com.google.gerrit.server.update.BatchUpdate;
 
-import com.google.inject.Provider;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.util.List;
 
 @RunWith(MockitoJUnitRunner.class)
 public class UpdateUtilTest {
