@@ -71,6 +71,10 @@ class GetFollow implements RestReadView<ChangeResource> {
 
     FollowInfo resp = new FollowInfo();
     Change change = rsrc.getChange();
+    if (!change.isNew()) {
+      // ignore MERGED or ABANDONED changes
+      return Response.ok(resp);
+    }
     resp.onReviewBranch = (change.getDest().branch().equals(cfg.getReviewBranch()));
     if (!resp.onReviewBranch) {
       return Response.ok(resp);

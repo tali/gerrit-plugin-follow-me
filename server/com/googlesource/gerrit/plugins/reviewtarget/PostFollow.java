@@ -82,6 +82,10 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
     logger.atFine().log("FollowMe POST id=%s doUpdate=%s newReviewTarget=%s", change.getId(), input.doUpdate, input.newReviewTarget);
 
     FollowInfo resp = new FollowInfo();
+    if (!change.isNew()) {
+      // ignore MERGED or ABANDONED changes
+      return Response.ok(resp);
+    }
     resp.onReviewBranch = (change.getDest().branch().equals(cfg.getReviewBranch()));
     if (!resp.onReviewBranch) {
       return Response.ok(resp);
