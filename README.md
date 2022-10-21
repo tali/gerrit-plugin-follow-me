@@ -42,8 +42,6 @@ Review-Target selection can be changed.
 
 ### Verify that a change adheres to the review selection
 
-TBD NOT IMPLEMENTED
-
 The rules for selecting files are stored in footer lines within the commit message.
 This makes it easy to check that the all relevant files are part of the review commit,
 without having to list all potential files by hand.
