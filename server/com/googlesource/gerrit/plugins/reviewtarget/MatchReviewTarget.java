@@ -17,9 +17,9 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 @Singleton
 public class MatchReviewTarget {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
-  private GitRepositoryManager gitManager;
-  private UpdateUtil updateUtil;
-  private Configuration cfg;
+  private final GitRepositoryManager gitManager;
+  private final UpdateUtil updateUtil;
+  private final Configuration cfg;
 
   @Inject
   MatchReviewTarget(

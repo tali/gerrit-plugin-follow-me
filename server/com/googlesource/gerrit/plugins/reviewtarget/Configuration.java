@@ -21,7 +21,6 @@ import com.google.gerrit.server.config.PluginConfig;
 import com.google.gerrit.server.config.PluginConfigFactory;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.eclipse.jgit.annotations.NonNull;
 
 import java.io.File;
 

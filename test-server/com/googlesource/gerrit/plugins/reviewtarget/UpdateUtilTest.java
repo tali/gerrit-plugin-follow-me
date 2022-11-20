@@ -15,10 +15,7 @@
 package com.googlesource.gerrit.plugins.reviewtarget;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 
-import com.google.gerrit.server.change.ChangeKindCache;
 import com.google.gerrit.server.change.NotifyResolver;
 import com.google.gerrit.server.change.PatchSetInserter;
 import com.google.gerrit.server.update.BatchUpdate;
@@ -35,7 +32,6 @@ public class UpdateUtilTest {
   @Mock private PatchSetInserter.Factory patchSetInserterFactory;
   @Mock private BatchUpdate.Factory updateFactory;
   @Mock private NotifyResolver notifyResolver;
-  @Mock private ChangeKindCache changeKindCache;
 
   private UpdateUtil updateUtil;
 
@@ -44,8 +40,7 @@ public class UpdateUtilTest {
     updateUtil = new UpdateUtil(
         patchSetInserterFactory,
         updateFactory,
-        notifyResolver,
-        changeKindCache);
+        notifyResolver);
   }
 
   @Test
@@ -74,25 +69,25 @@ public class UpdateUtilTest {
 
   @Test
   public void insertFooters_replace1to1() {
-    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: inbetween\nE: last\n", "D", "value"))
+    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: between\nE: last\n", "D", "value"))
     .isEqualTo("A\n\nB: no-footer\n\nChange-Id: footer\nD: value\nE: last\n");
   }
 
   @Test
   public void insertFooters_replace1to2() {
-    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: inbetween\nE: last\n", "D", "value1 \n value2"))
+    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: between\nE: last\n", "D", "value1 \n value2"))
     .isEqualTo("A\n\nB: no-footer\n\nChange-Id: footer\nD: value1\nD: value2\nE: last\n");
   }
 
   @Test
   public void insertFooters_replace2to1() {
-    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: inbetween\nE: other\nD: another\n", "D", "value"))
+    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: between\nE: other\nD: another\n", "D", "value"))
     .isEqualTo("A\n\nB: no-footer\n\nChange-Id: footer\nD: value\nE: other\n");
   }
 
   @Test
   public void insertFooters_replace2to2() {
-    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: inbetween\nE: other\nD: another\n", "D", "value1 \n value2"))
+    assertThat(updateUtil.insertFooters("A\n\nB: no-footer\n\nChange-Id: footer\nD: between\nE: other\nD: another\n", "D", "value1 \n value2"))
     .isEqualTo("A\n\nB: no-footer\n\nChange-Id: footer\nD: value1\nD: value2\nE: other\n");
   }
 

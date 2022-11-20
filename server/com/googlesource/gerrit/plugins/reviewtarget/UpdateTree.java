@@ -17,7 +17,6 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 import com.google.common.flogger.FluentLogger;
 
 import com.google.gerrit.entities.Change;
-import com.google.gerrit.extensions.restapi.BadRequestException;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.notedb.ChangeNotes;
@@ -41,7 +40,6 @@ import org.eclipse.jgit.lib.MutableObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.TreeFormatter;
 import org.eclipse.jgit.ignore.FastIgnoreRule;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
@@ -90,13 +88,13 @@ class UpdateTree implements AutoCloseable {
 
   public void newReviewTarget(String targetName) throws IOException {
     reviewTarget = targetName;
-    current = updateUtil.getCurrentCommit(repo, rw, change);
+    current = UpdateUtil.getCurrentCommit(repo, rw, change);
     target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
     validReviewTarget = target != null;
   }
 
   public void useReviewTargetFooter(String footerName) throws IOException {
-    current = updateUtil.getCurrentCommit(repo, rw, change);
+    current = UpdateUtil.getCurrentCommit(repo, rw, change);
     List<String> footerLines = current.getFooterLines(footerName);
     if (footerLines.size() == 0) {
       validReviewTarget = false;
@@ -150,7 +148,7 @@ class UpdateTree implements AutoCloseable {
     return reviewFiles;
   }
 
-  enum Selected { NO_MATCH, POSITIVE, NEGATIVE };
+  enum Selected { NO_MATCH, POSITIVE, NEGATIVE }
 
   /**
    * check if this path matches our given filter
@@ -235,7 +233,7 @@ class UpdateTree implements AutoCloseable {
    * Walk all paths and TBD
    */
   void getChangedPaths(List<String> added, List<String> updated, List<String> removed) throws IOException {
-    current = updateUtil.getCurrentCommit(repo, rw, change);
+    current = UpdateUtil.getCurrentCommit(repo, rw, change);
     RevCommit parent = rw.parseCommit(current.getParent(0));
 
     RevTree currentTree = rw.parseTree(current.getTree());
@@ -299,9 +297,9 @@ class UpdateTree implements AutoCloseable {
     return _getVersion(followBranch, prefix, dropPrefix);
   }
 
-  public int createPatchset(
+  public int createPatchSet(
         CurrentUser user, String reviewTargetFooter, String reviewFilesFooter, ChangeNotes notes
-  ) throws IOException, BadRequestException, ConfigInvalidException, UpdateException, RestApiException {
+  ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     String currentMessage = current.getFullMessage();
     String message = getUpdatedMessage(currentMessage, reviewTargetFooter, reviewFilesFooter);
     boolean sameMsg = message.equals(current.getFullMessage());
@@ -312,12 +310,12 @@ class UpdateTree implements AutoCloseable {
     }
 
     RevCommit updated = getUpdatedCommit(user, message);
-    String patchsetMsg = getPatchsetMessage(sameTree);
+    String patchSetMsg = getPatchSetMessage(sameTree);
 
-    return updateUtil.createPatchset(repo, rw, inserter, user, change, updated, patchsetMsg, notes);
+    return updateUtil.createPatchSet(repo, rw, inserter, user, change, updated, patchSetMsg, notes);
   }
 
-  private final String getUpdatedMessage(String original, String reviewTargetFooter, String reviewFilesFooter) {
+  private String getUpdatedMessage(String original, String reviewTargetFooter, String reviewFilesFooter) {
     String message = original;
 
     message = updateUtil.insertFooters(message, reviewTargetFooter, reviewTarget);
@@ -326,18 +324,15 @@ class UpdateTree implements AutoCloseable {
     return message;
   }
 
-  private final String getPatchsetMessage(boolean sameTree) {
+  private String getPatchSetMessage(boolean sameTree) {
     if (sameTree) {
       return "Updated commit message.";
     }
 
-    StringBuilder message = new StringBuilder();
-    message.append("Updated files based on ").append(reviewTarget).append(".");
-
-    return message.toString();
+    return "Updated files based on " + reviewTarget + ".";
   }
 
-  private final RevCommit getUpdatedCommit(CurrentUser user, String message) throws IOException {
+  private RevCommit getUpdatedCommit(CurrentUser user, String message) throws IOException {
     ZoneId tz = current.getCommitterIdent().getZoneId();
     PersonIdent committer = user.asIdentifiedUser().newCommitterIdent(Instant.now(), tz);
 
@@ -352,17 +347,10 @@ class UpdateTree implements AutoCloseable {
     return rw.parseCommit(commit(updated));
   }
 
-  private final ObjectId commit(CommitBuilder builder)
+  private ObjectId commit(CommitBuilder builder)
       throws IOException {
     ObjectId id = inserter.insert(builder);
     inserter.flush();
     return id;
   }
-
-  private final ObjectId tree(TreeFormatter formatter)
-      throws IOException {
-    ObjectId id = inserter.insert(formatter);
-    inserter.flush();
-    return id;
-  }
-};
+}

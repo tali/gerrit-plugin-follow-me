@@ -20,7 +20,6 @@ import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.extensions.restapi.RestReadView;
 import com.google.gerrit.server.git.GitRepositoryManager;
-import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.ChangeResource;
 import com.google.gerrit.server.update.UpdateException;
 import com.google.inject.Inject;
@@ -67,7 +66,7 @@ class GetFollow implements RestReadView<ChangeResource> {
 
   @Override
   public Response<FollowInfo> apply(ChangeResource rsrc) throws IOException, RestApiException, ConfigInvalidException, UpdateException {
-    preconditions.assertAddPatchsetPermission(rsrc);
+    preconditions.assertAddPatchSetPermission(rsrc);
 
     FollowInfo resp = new FollowInfo();
     Change change = rsrc.getChange();
@@ -79,7 +78,6 @@ class GetFollow implements RestReadView<ChangeResource> {
     if (!resp.onReviewBranch) {
       return Response.ok(resp);
     }
-    CurrentUser user = rsrc.getUser();
 
     logger.atFine().log("FollowMe GET id=%s key=%s", change.getId(), change.getKey());
 

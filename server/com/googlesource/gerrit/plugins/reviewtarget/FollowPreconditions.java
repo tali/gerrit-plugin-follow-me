@@ -38,13 +38,13 @@ class FollowPreconditions {
     this.permissionBackend = requireNonNull(permissionBackend);
   }
 
-  void assertAddPatchsetPermission(ChangeResource rsrc) throws AuthException {
-    if (!canAddPatchset(rsrc)) {
-      throw new AuthException("not allowed to create new patchsets");
+  void assertAddPatchSetPermission(ChangeResource rsrc) throws AuthException {
+    if (!canAddPatchSet(rsrc)) {
+      throw new AuthException("not allowed to create new patch sets");
     }
   }
 
-  protected boolean canAddPatchset(ChangeResource rsrc) {
+  protected boolean canAddPatchSet(ChangeResource rsrc) {
     PermissionBackend.WithUser userPermission = permissionBackend.user(userProvider.get());
     return userPermission.change(rsrc.getChangeData()).testOrFalse(ChangePermission.ADD_PATCH_SET);
   }

@@ -16,14 +16,13 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 
+import com.google.gerrit.common.Nullable;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
-import com.google.gerrit.extensions.restapi.BadRequestException;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.server.ChangeUtil;
 import com.google.gerrit.server.CurrentUser;
-import com.google.gerrit.server.change.ChangeKindCache;
 import com.google.gerrit.server.change.NotifyResolver;
 import com.google.gerrit.server.change.PatchSetInserter;
 import com.google.gerrit.server.notedb.ChangeNotes;
@@ -52,7 +51,6 @@ class UpdateUtil {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
   private final PatchSetInserter.Factory patchSetInserterFactory;
-  private final ChangeKindCache changeKindCache;
   private final NotifyResolver notifyResolver;
   private final BatchUpdate.Factory updateFactory;
 
@@ -60,10 +58,8 @@ class UpdateUtil {
   UpdateUtil(
       PatchSetInserter.Factory patchSetInserterFactory,
       BatchUpdate.Factory updateFactory,
-      NotifyResolver notifyResolver,
-      ChangeKindCache changeKindCache) {
+      NotifyResolver notifyResolver) {
     this.patchSetInserterFactory = requireNonNull(patchSetInserterFactory);
-    this.changeKindCache = requireNonNull(changeKindCache);
     this.updateFactory = requireNonNull(updateFactory);
     this.notifyResolver = requireNonNull(notifyResolver);
   }
@@ -96,7 +92,7 @@ class UpdateUtil {
     }
     if (start >= 0) {
         // include message before old footer
-        message.append(oldMessage.substring(0, start + 1));
+        message.append(oldMessage, 0, start + 1);
     } else {
       // we already have footers, but not for our key
       message.append(oldMessage);
@@ -122,7 +118,7 @@ class UpdateUtil {
       // copy everything up to the next footer with our key
       int next = oldMessage.indexOf("\n" + key + ":", start);
       if (next > 0) {
-        message.append(oldMessage.substring(start + 1, next + 1));
+        message.append(oldMessage, start + 1, next + 1);
         start = next;
       } else {
         message.append(oldMessage.substring(start + 1));
@@ -133,37 +129,41 @@ class UpdateUtil {
     return message.toString();
   }
 
-  public int createPatchset(
+  public int createPatchSet(
         Repository repo, RevWalk rw, ObjectInserter inserter,
         CurrentUser user,
-        Change change, RevCommit updated, String patchsetMsg,
+        Change change, RevCommit updated, String patchSetMsg,
         ChangeNotes notes
-  ) throws IOException, BadRequestException, ConfigInvalidException, UpdateException, RestApiException {
+  ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     PatchSet.Id psId = ChangeUtil.nextPatchSetId(repo, change.currentPatchSetId());
 
     StringBuilder builder = new StringBuilder("Created patch set ").append(psId.get()).append(": ");
-    builder.append(patchsetMsg);
+    builder.append(patchSetMsg);
     String message = builder.toString();
 
-    PatchSetInserter patchset =
+    PatchSetInserter patchSet =
         patchSetInserterFactory
             .create(notes, psId, updated)
             .setSendEmail(!change.isWorkInProgress())
-            .setMessage(patchsetMsg);
+            .setMessage(message);
 
     try (BatchUpdate bu = updateFactory.create(change.getProject(), user, TimeUtil.now())) {
       bu.setRepository(repo, rw, inserter);
       bu.setNotify(notifyResolver.resolve(NotifyHandling.ALL, null));
-      bu.addOp(change.getId(), patchset);
+      bu.addOp(change.getId(), patchSet);
       bu.execute();
     }
-    logger.atInfo().log("new patchset: %s", patchsetMsg);
+    logger.atInfo().log("new patchSet: %s", patchSetMsg);
 
     return psId.get();
   }
 
+  @Nullable
   public static RevCommit getCurrentCommit(Repository repo, RevWalk rw, Change change) throws IOException {
-    return rw.parseCommit(repo.exactRef(change.currentPatchSetId().toRefName()).getObjectId());
+    PatchSet.Id id = change.currentPatchSetId();
+    if (id == null) {
+      return null;
+    }
+    return rw.parseCommit(repo.exactRef(id.toRefName()).getObjectId());
   }
-
-};
+}

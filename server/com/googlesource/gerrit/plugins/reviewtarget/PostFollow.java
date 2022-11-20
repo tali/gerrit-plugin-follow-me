@@ -76,7 +76,7 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
 
   @Override
   public Response<FollowInfo> apply(ChangeResource rsrc, Input input) throws IOException, RestApiException, ConfigInvalidException, UpdateException {
-    preconditions.assertAddPatchsetPermission(rsrc);
+    preconditions.assertAddPatchSetPermission(rsrc);
 
     Change change = rsrc.getChange();
     logger.atFine().log("FollowMe POST id=%s doUpdate=%s newReviewTarget=%s", change.getId(), input.doUpdate, input.newReviewTarget);
@@ -115,15 +115,15 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
 
       update.rewritePaths();
 
-      resp.addedPaths = new ArrayList();
-      resp.updatedPaths = new ArrayList();
-      resp.removedPaths = new ArrayList();
+      resp.addedPaths = new ArrayList<>();
+      resp.updatedPaths = new ArrayList<>();
+      resp.removedPaths = new ArrayList<>();
       update.getChangedPaths(resp.addedPaths, resp.updatedPaths, resp.removedPaths);
 
       resp.version = update.getTargetVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
 
       if (input.doUpdate) {
-        resp.newPatchsetId = update.createPatchset(user, cfg.getReviewTargetFooter(), cfg.getReviewFilesFooter(), rsrc.getNotes());
+        resp.newPatchsetId = update.createPatchSet(user, cfg.getReviewTargetFooter(), cfg.getReviewFilesFooter(), rsrc.getNotes());
       }
     }
     return Response.ok(resp);

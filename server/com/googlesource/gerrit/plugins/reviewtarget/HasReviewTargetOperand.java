@@ -29,7 +29,7 @@ import static java.util.Objects.requireNonNull;
 @Singleton
 public class HasReviewTargetOperand implements ChangeQueryBuilder.ChangeHasOperandFactory {
 
-  private MatchReviewTarget matchReviewTarget;
+  private final MatchReviewTarget matchReviewTarget;
   final static String OPERAND = "selected";
 
   public static class Module extends AbstractModule {
