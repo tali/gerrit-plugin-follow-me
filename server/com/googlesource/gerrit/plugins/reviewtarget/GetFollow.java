@@ -67,17 +67,11 @@ class GetFollow implements RestReadView<ChangeResource> {
   @Override
   public Response<FollowInfo> apply(ChangeResource rsrc) throws IOException, RestApiException, ConfigInvalidException, UpdateException {
     preconditions.assertAddPatchSetPermission(rsrc);
+    preconditions.assertCanChangeReviewTarget(rsrc);
 
-    FollowInfo resp = new FollowInfo();
     Change change = rsrc.getChange();
-    if (!change.isNew()) {
-      // ignore MERGED or ABANDONED changes
-      return Response.ok(resp);
-    }
-    resp.onReviewBranch = (change.getDest().branch().equals(cfg.getReviewBranch()));
-    if (!resp.onReviewBranch) {
-      return Response.ok(resp);
-    }
+    FollowInfo resp = new FollowInfo();
+    resp.onReviewBranch = true;
 
     logger.atFine().log("FollowMe GET id=%s key=%s", change.getId(), change.getKey());
 

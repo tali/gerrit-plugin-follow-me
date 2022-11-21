@@ -14,7 +14,9 @@
 
 package com.googlesource.gerrit.plugins.reviewtarget;
 
+import com.google.gerrit.entities.Change;
 import com.google.gerrit.extensions.restapi.AuthException;
+import com.google.gerrit.extensions.restapi.PreconditionFailedException;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.ChangeResource;
 import com.google.gerrit.server.permissions.PermissionBackend;
@@ -27,15 +29,38 @@ import static java.util.Objects.requireNonNull;
 
 @Singleton
 class FollowPreconditions {
+  private final Configuration cfg;
   private final Provider<CurrentUser> userProvider;
   private final PermissionBackend permissionBackend;
 
   @Inject
   public FollowPreconditions(
+      Configuration cfg,
       Provider<CurrentUser> userProvider,
       PermissionBackend permissionBackend) {
+    this.cfg = requireNonNull(cfg);
     this.userProvider = requireNonNull(userProvider);
     this.permissionBackend = requireNonNull(permissionBackend);
+  }
+
+  void assertCanChangeReviewTarget(ChangeResource rsrc) throws PreconditionFailedException {
+    Change change = rsrc.getChange();
+
+    if (change.isMerged()) {
+      throw new PreconditionFailedException("change is MERGED");
+    }
+
+    if (change.isAbandoned()) {
+      throw new PreconditionFailedException("change is ABANDONED");
+    }
+
+    if (!onReviewBranch(change)) {
+      throw new PreconditionFailedException("not on review branch");
+    }
+  }
+
+  protected boolean onReviewBranch(Change change) {
+    return change.getDest().branch().equals(cfg.getReviewBranch());
   }
 
   void assertAddPatchSetPermission(ChangeResource rsrc) throws AuthException {
