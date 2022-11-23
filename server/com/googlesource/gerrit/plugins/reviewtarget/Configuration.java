@@ -14,22 +14,16 @@
 
 package com.googlesource.gerrit.plugins.reviewtarget;
 
-import com.google.common.flogger.FluentLogger;
-import com.google.gerrit.extensions.annotations.PluginData;
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.server.config.PluginConfig;
 import com.google.gerrit.server.config.PluginConfigFactory;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
-import java.io.File;
-
 import static java.util.Objects.requireNonNull;
 
 @Singleton
 class Configuration {
-  private static final FluentLogger log = FluentLogger.forEnclosingClass();
-
   private final String followBranch;
   private final String reviewBranch;
   private final String reviewFilesFooter;
@@ -37,23 +31,25 @@ class Configuration {
   private final String versionPrefix;
   private final String versionDropPrefix;
 
-  private final PluginConfig cfg;
-  private File pluginData;
+  static final String DEFAULT_FOLLOW_BRANCH = "refs/heads/master";
+  static final String DEFAULT_REVIEW_BRANCH = "refs/heads/review";
+  static final String DEFAULT_REVIEW_FILES_FOOTER = "Review-Files";
+  static final String DEFAULT_REVIEW_TARGET_FOOTER = "Review-Target";
+  static final String DEFAULT_VERSION_PREFIX = "refs/tags/";
+  static final String DEFAULT_VERSION_DROP_PREFIX = "refs/tags/";
 
   @Inject
   public Configuration(
       PluginConfigFactory pluginConfigFactory,
-      @PluginName String pluginName,
-      @PluginData File pluginData) {
-    this.cfg = requireNonNull(pluginConfigFactory.getFromGerritConfig(pluginName));
-    this.pluginData = requireNonNull(pluginData);
+      @PluginName String pluginName) {
+    PluginConfig cfg = requireNonNull(pluginConfigFactory.getFromGerritConfig(pluginName));
 
-    this.followBranch = cfg.getString("followBranch", "refs/heads/master");
-    this.reviewBranch = cfg.getString("reviewBranch", "refs/heads/review");
-    this.reviewFilesFooter = cfg.getString("reviewFilesFooter", "Review-Files");
-    this.reviewTargetFooter = cfg.getString("reviewTargetFooter", "Review-Target");
-    this.versionPrefix = cfg.getString("versionPrefix", "refs/tags/");
-    this.versionDropPrefix = cfg.getString("versionDropPrefix", "refs/tags/");
+    this.followBranch = cfg.getString("followBranch", DEFAULT_FOLLOW_BRANCH);
+    this.reviewBranch = cfg.getString("reviewBranch", DEFAULT_REVIEW_BRANCH);
+    this.reviewFilesFooter = cfg.getString("reviewFilesFooter", DEFAULT_REVIEW_FILES_FOOTER);
+    this.reviewTargetFooter = cfg.getString("reviewTargetFooter", DEFAULT_REVIEW_TARGET_FOOTER);
+    this.versionPrefix = cfg.getString("versionPrefix", DEFAULT_VERSION_PREFIX);
+    this.versionDropPrefix = cfg.getString("versionDropPrefix", DEFAULT_VERSION_DROP_PREFIX);
   }
 
   public String getFollowBranch() {

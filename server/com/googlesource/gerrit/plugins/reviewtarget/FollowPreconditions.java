@@ -24,12 +24,13 @@ import com.google.gerrit.server.permissions.ChangePermission;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import org.eclipse.jgit.ignore.FastIgnoreRule;
 
 import static java.util.Objects.requireNonNull;
 
 @Singleton
 class FollowPreconditions {
-  private final Configuration cfg;
+  private final FastIgnoreRule reviewBranchRule;
   private final Provider<CurrentUser> userProvider;
   private final PermissionBackend permissionBackend;
 
@@ -38,7 +39,7 @@ class FollowPreconditions {
       Configuration cfg,
       Provider<CurrentUser> userProvider,
       PermissionBackend permissionBackend) {
-    this.cfg = requireNonNull(cfg);
+    this.reviewBranchRule = new FastIgnoreRule(cfg.getReviewBranch());
     this.userProvider = requireNonNull(userProvider);
     this.permissionBackend = requireNonNull(permissionBackend);
   }
@@ -60,7 +61,8 @@ class FollowPreconditions {
   }
 
   protected boolean onReviewBranch(Change change) {
-    return change.getDest().branch().equals(cfg.getReviewBranch());
+    String branchName = change.getDest().branch();
+    return reviewBranchRule.isMatch(branchName, false);
   }
 
   void assertAddPatchSetPermission(ChangeResource rsrc) throws AuthException {
