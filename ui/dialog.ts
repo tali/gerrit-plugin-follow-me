@@ -24,6 +24,7 @@ import {ChangeInfo} from '@gerritcodereview/typescript-api/rest-api';
 
 import {changeFollowPost, FollowInfo} from './api';
 import {BindValueChangeEvent} from './types';
+import {fireReload} from './event-util';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -294,7 +295,8 @@ export class SelectReviewTargetDialog extends LitElement {
     const restApi = this.plugin.restApi();
     await changeFollowPost(restApi, this.change, true, this.reviewTarget, this.reviewFiles);
 
-    window.location.reload(); // TBD
+    this.close();
+    fireReload(this, /*clearPatchset=*/ true);
   }
 
   private async handleConfirmTap(e: Event) {
