@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (C) 2022 Siemens Mobility GmbH
+ * Copyright (C) 2023 Siemens Mobility GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import {ChangeInfo} from '@gerritcodereview/typescript-api/rest-api';
 import {changeFollowPost, FollowInfo} from './api';
 import {BindValueChangeEvent} from './types';
 import {fireReload} from './event-util';
+import './gr-show-files';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -143,12 +144,8 @@ export class SelectReviewTargetDialog extends LitElement {
             ${name}
           </gr-tooltip-content>
         </span>
-        <gr-tooltip-content
-          has-tooltip
-          title="${paths.join("\n")}"
-        >
-          ${paths.length} files
-        </gr-tooltip-content>
+        <gr-show-files .files=${paths}>
+        </gr-show-files>
       </section>
     `;
   }
