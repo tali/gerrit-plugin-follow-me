@@ -35,11 +35,13 @@ export class GrShowFiles extends LitElement {
   static override styles = [
     css`
       .summary { color: var(--deemphasized-text-color); }
-      .fileName { color: var(--text-color); }
+      .matchingFilePath { color: var(--deemphasized-text-color); }
+      .newFilePath { color: var(--primary-text-color); }
+      .fileName { color: var(--link-color); }
     `
   ];
 
-  summary() {
+  renderSummary() {
     let count = this.files.length;
     if (count == 1) {
       return html`1 file`;
@@ -48,23 +50,51 @@ export class GrShowFiles extends LitElement {
     }
   }
 
+  renderPath(path: string[], previous: string[]) {
+    var index = 0;
+    var matchingFilePath = "";
+    var newFilePath = "";
+
+    while (index < path.length-1 &&
+           index < previous.length-1 &&
+           path[index] == previous[index]) {
+      matchingFilePath += path[index] + "/";
+      index += 1;
+    }
+    while (index < path.length-1) {
+      newFilePath += path[index] + "/";
+      index += 1;
+    }
+    let fileName = path[index];
+
+    return html`
+      <span class="matchingFilePath">${matchingFilePath}</span
+     ><span class="newFilePath">${newFilePath}</span
+     ><span class="fileName">${fileName}</span>
+      <br/>
+    `;
+  }
+
   override render() {
     if (this.expanded) {
+      var previous: string[] = [];
       return html`
         <div @click=${this._clickHandler}>
-          <span class=summary>${this.summary()}</span>
+          <span class=summary>${this.renderSummary()}</span>
           <gr-icon icon="expand_less"></gr-icon>
           <br/>
-          ${this.files.map(file => html`
-            <span class="fileName">${file}</span>
-            <br/>
-          `)}
+          ${this.files.map(file => {
+            let path = file.split("/");
+            let prev = previous;
+            previous = path;
+            return this.renderPath(path, prev);
+          })}
         </div>
       `;
     } else {
       return html`
         <div @click=${this._clickHandler}>
-          ${this.summary()}
+          ${this.renderSummary()}
           <gr-icon icon="expand_more"></gr-icon>
         </div>
       `;
