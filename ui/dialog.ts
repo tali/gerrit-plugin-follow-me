@@ -81,6 +81,10 @@ export class SelectReviewTargetDialog extends LitElement {
       input[error] {
         color: red;
       }
+      #reviewfiles {
+        height: 3em;
+        width: 20em;
+      }
       .main {
         display: flex;
         flex-direction: column;
@@ -208,7 +212,7 @@ export class SelectReviewTargetDialog extends LitElement {
                   }
                 }}
               >
-                <textarea rows=3></textarea>
+                <textarea id="reviewfiles"></textarea>
               </iron-input>
             </section>
             ${this._renderChangedPaths(
