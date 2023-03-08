@@ -21,10 +21,11 @@ import {RestPluginApi} from '@gerritcodereview/typescript-api/rest';
 export declare interface FollowInfo {
   on_review_branch: boolean;
   valid_review_target: boolean;
+  rebase_required: boolean;
   new_patchset_id: number;
   version: string;
-  follow_version: string;
   follow_branch: string;
+  follow_version: string;
   review_target: string;
   review_files: string;
   added_paths: string[];

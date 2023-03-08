@@ -16,9 +16,11 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.entities.Change;
+import com.google.gerrit.extensions.restapi.ResourceConflictException;
 import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.extensions.restapi.RestReadView;
+import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.change.ChangeResource;
 import com.google.gerrit.server.update.UpdateException;
@@ -38,6 +40,7 @@ class GetFollow implements RestReadView<ChangeResource> {
   static class FollowInfo {
     boolean onReviewBranch;
     boolean validReviewTarget;
+    boolean rebaseRequired;
     String version;
     String followVersion;
     String followBranch;
@@ -51,17 +54,20 @@ class GetFollow implements RestReadView<ChangeResource> {
   private final Configuration cfg;
   private final FollowPreconditions preconditions;
   private final UpdateUtil updateUtil;
+  private final RebaseUtil rebaseUtil;
 
   @Inject
   GetFollow(
       GitRepositoryManager gitManager,
       Configuration cfg,
       FollowPreconditions preconditions,
-      UpdateUtil updateUtil) {
+      UpdateUtil updateUtil,
+      RebaseUtil rebaseUtil) {
     this.gitManager = requireNonNull(gitManager);
     this.cfg = requireNonNull(cfg);
     this.preconditions = requireNonNull(preconditions);
     this.updateUtil = requireNonNull(updateUtil);
+    this.rebaseUtil = requireNonNull(rebaseUtil);
   }
 
   @Override
@@ -77,7 +83,7 @@ class GetFollow implements RestReadView<ChangeResource> {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil);
+        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
     ) {
       update.useReviewTargetFooter(cfg.getReviewTargetFooter());
       resp.validReviewTarget = update.isValidReviewTarget();
@@ -95,6 +101,7 @@ class GetFollow implements RestReadView<ChangeResource> {
       resp.reviewTarget = update.getReviewTarget();
       resp.reviewFiles = update.getReviewFiles();
       resp.version = update.getTargetVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
+      resp.rebaseRequired = update.rebaseWhenNecessary(rsrc.getNotes().getCurrentPatchSet());
     }
     return Response.ok(resp);
   }

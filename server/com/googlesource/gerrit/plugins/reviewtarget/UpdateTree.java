@@ -16,9 +16,13 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 
+import com.google.gerrit.common.Nullable;
+import com.google.gerrit.entities.BranchNameKey;
 import com.google.gerrit.entities.Change;
+import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.server.CurrentUser;
+import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.notedb.ChangeNotes;
 import com.google.gerrit.server.update.UpdateException;
 
@@ -61,7 +65,10 @@ class UpdateTree implements AutoCloseable {
   private final ObjectReader reader;
   private final ObjectInserter inserter;
   private final UpdateUtil updateUtil;
+  private final RebaseUtil rebaseUtil;
+
   private RevCommit current;
+  private RevCommit newParent;
   private RevCommit target;
   private RevCommit followBranch;
   private String reviewTarget;
@@ -70,9 +77,10 @@ class UpdateTree implements AutoCloseable {
   private String reviewFiles;
   private ObjectId updatedTree;
 
-  UpdateTree(Repository repo, Change change, UpdateUtil updateUtil) {
+  UpdateTree(Repository repo, Change change, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
     this.change = requireNonNull(change);
     this.updateUtil = requireNonNull(updateUtil);
+    this.rebaseUtil = requireNonNull(rebaseUtil);
     this.repo = requireNonNull(repo);
     this.inserter = requireNonNull(repo.newObjectInserter());
     this.reader = requireNonNull(inserter.newReader());
@@ -89,12 +97,14 @@ class UpdateTree implements AutoCloseable {
   public void newReviewTarget(String targetName) throws IOException {
     reviewTarget = targetName;
     current = UpdateUtil.getCurrentCommit(repo, rw, change);
+    newParent = rw.parseCommit(current.getParent(0));
     target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
     validReviewTarget = target != null;
   }
 
   public void useReviewTargetFooter(String footerName) throws IOException {
     current = UpdateUtil.getCurrentCommit(repo, rw, change);
+    newParent = rw.parseCommit(current.getParent(0));
     List<String> footerLines = current.getFooterLines(footerName);
     if (footerLines.size() == 0) {
       validReviewTarget = false;
@@ -166,6 +176,17 @@ class UpdateTree implements AutoCloseable {
     return Selected.NO_MATCH;
   }
 
+  boolean rebaseWhenNecessary(PatchSet patchset) throws IOException {
+    try {
+      // find a new parent commit based on new version of parent change/branch
+      BranchNameKey branch = change.getDest();
+      ObjectId baseId = rebaseUtil.findBaseRevision(patchset, branch, repo, rw);
+      newParent = rw.parseCommit(baseId);
+      return true;
+    } catch (RestApiException e) {}
+    return false;
+  }
+
   /**
    * Walk all paths and choose elements from either the parent or the target tree
    */
@@ -177,8 +198,7 @@ class UpdateTree implements AutoCloseable {
       return;
     }
 
-    RevCommit parent = rw.parseCommit(current.getParent(0));
-    RevTree parentTree = rw.parseTree(parent.getTree());
+    RevTree parentTree = rw.parseTree(newParent.getTree());
 
     DirCache cache = DirCache.newInCore();
     DirCacheBuilder builder = cache.builder();
@@ -234,31 +254,34 @@ class UpdateTree implements AutoCloseable {
    */
   void getChangedPaths(List<String> added, List<String> updated, List<String> removed) throws IOException {
     current = UpdateUtil.getCurrentCommit(repo, rw, change);
-    RevCommit parent = rw.parseCommit(current.getParent(0));
+    RevCommit oldParent = rw.parseCommit(current.getParent(0));
 
     RevTree currentTree = rw.parseTree(current.getTree());
-    RevTree parentTree = rw.parseTree(parent.getTree());
+    RevTree oldParentTree = rw.parseTree(oldParent.getTree());
+    RevTree newParentTree = rw.parseTree(newParent.getTree());
 
     TreeWalk walk = new NameConflictTreeWalk(repo, reader);
     int idOld = walk.addTree(currentTree);
     int idNew = walk.addTree(updatedTree);
-    int idPar = walk.addTree(parentTree);
+    int idOldPar = walk.addTree(oldParentTree);
+    int idNewPar = walk.addTree(newParentTree);
     walk.setRecursive(true);
 
     while (walk.next()) {
 
       FileMode modeOld = walk.getFileMode(idOld);
       FileMode modeNew = walk.getFileMode(idNew);
+      FileMode modeOldPar = walk.getFileMode(idOldPar);
+      FileMode modeNewPar = walk.getFileMode(idNewPar);
 
-      if (walk.idEqual(idOld, idNew) && (modeOld == modeNew)) {
+      if (walk.idEqual(idOld, idNew) && (modeOld == modeNew) &&
+          walk.idEqual(idOldPar, idNewPar) && (modeOldPar == modeNewPar)) {
         // not changed
         continue;
       }
 
-      FileMode modePar = walk.getFileMode(idPar);
-
-      boolean sameOld = walk.idEqual(idOld, idPar) && (modeOld == modePar);
-      boolean sameNew = walk.idEqual(idNew, idPar) && (modeNew == modePar);
+      boolean sameOld = walk.idEqual(idOld, idOldPar) && (modeOld == modeOldPar);
+      boolean sameNew = walk.idEqual(idNew, idNewPar) && (modeNew == modeNewPar);
       String path = walk.getPathString();
 
       if (sameOld) {
@@ -283,7 +306,7 @@ class UpdateTree implements AutoCloseable {
       }
     }
 
-    return reviewTarget;
+    return commit.getId().abbreviate(7).name();
   }
 
   public String getTargetVersion(String prefix, String dropPrefix) throws IOException {
@@ -304,8 +327,9 @@ class UpdateTree implements AutoCloseable {
     String message = getUpdatedMessage(currentMessage, reviewTargetFooter, reviewFilesFooter);
     boolean sameMsg = message.equals(current.getFullMessage());
     boolean sameTree = updatedTree.equals(current.getTree());
+    boolean sameParent = newParent.equals(current.getParent(0));
 
-    if (sameMsg && sameTree) {
+    if (sameMsg && sameTree && sameParent) {
       return 0;
     }
 
@@ -341,7 +365,7 @@ class UpdateTree implements AutoCloseable {
     updated.setAuthor(current.getAuthorIdent());
     updated.setCommitter(committer);
     updated.setMessage(message);
-    updated.setParentIds(current.getParents());
+    updated.setParentId(newParent);
     updated.setTreeId(updatedTree);
 
     return rw.parseCommit(commit(updated));

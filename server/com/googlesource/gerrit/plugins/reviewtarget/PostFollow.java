@@ -19,6 +19,7 @@ import com.google.gerrit.entities.Change;
 import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.extensions.restapi.RestModifyView;
+import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.ChangeResource;
@@ -61,17 +62,20 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
   private final Configuration cfg;
   private final FollowPreconditions preconditions;
   private final UpdateUtil updateUtil;
+  private final RebaseUtil rebaseUtil;
 
   @Inject
   PostFollow(
       GitRepositoryManager gitManager,
       Configuration cfg,
       FollowPreconditions preconditions,
-      UpdateUtil updateUtil) {
+      UpdateUtil updateUtil,
+      RebaseUtil rebaseUtil) {
     this.gitManager = requireNonNull(gitManager);
     this.cfg = requireNonNull(cfg);
     this.preconditions = requireNonNull(preconditions);
     this.updateUtil = requireNonNull(updateUtil);
+    this.rebaseUtil = requireNonNull(rebaseUtil);
   }
 
   @Override
@@ -88,7 +92,7 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil);
+        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
     ) {
       if (input.newReviewTarget != null) {
         update.newReviewTarget(input.newReviewTarget);
@@ -107,6 +111,7 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
         return Response.ok(resp);
       }
 
+      update.rebaseWhenNecessary(rsrc.getChangeData().currentPatchSet());
       update.rewritePaths();
 
       resp.addedPaths = new ArrayList<>();

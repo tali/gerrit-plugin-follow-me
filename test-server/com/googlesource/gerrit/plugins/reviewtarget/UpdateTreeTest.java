@@ -9,6 +9,7 @@ import com.google.gerrit.lifecycle.LifecycleManager;
 import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.account.AccountManager;
 import com.google.gerrit.server.account.AuthRequest;
+import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.config.AllProjectsName;
 import com.google.gerrit.server.notedb.ChangeNotes;
 import com.google.gerrit.server.schema.SchemaCreator;
@@ -42,6 +43,7 @@ public class UpdateTreeTest {
   @Inject private IdentifiedUser.GenericFactory userFactory;
 
   @Inject private UpdateUtil updateUtil;
+  @Inject private RebaseUtil rebaseUtil;
   private UpdateTree updateTree;
 
   public void setUpInjector() throws Exception {
@@ -75,7 +77,7 @@ public class UpdateTreeTest {
     setUpInjector();
     setUpChange();
 
-    updateTree = new UpdateTree(repo, change, updateUtil);
+    updateTree = new UpdateTree(repo, change, updateUtil, rebaseUtil);
   }
 
   @After

@@ -4,6 +4,7 @@ import com.google.common.flogger.FluentLogger;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.exceptions.StorageException;
+import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -19,16 +20,19 @@ public class MatchReviewTarget {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
   private final GitRepositoryManager gitManager;
   private final UpdateUtil updateUtil;
+  private final RebaseUtil rebaseUtil;
   private final Configuration cfg;
 
   @Inject
   MatchReviewTarget(
       GitRepositoryManager gitManager,
       UpdateUtil updateUtil,
+      RebaseUtil rebaseUtil,
       Configuration cfg
   ) {
     this.gitManager = requireNonNull(gitManager);
     this.updateUtil = requireNonNull(updateUtil);
+    this.rebaseUtil = requireNonNull(rebaseUtil);
     this.cfg = requireNonNull(cfg);
   }
 
@@ -36,7 +40,7 @@ public class MatchReviewTarget {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil);
+        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
     ) {
       update.useReviewTargetFooter(cfg.getReviewTargetFooter());
       update.useReviewFilesFooter(cfg.getReviewFilesFooter());

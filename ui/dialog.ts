@@ -63,6 +63,7 @@ export class SelectReviewTargetDialog extends LitElement {
   @state() removedPaths: string[] = [];
   @state() updatedPaths: string[] = [];
 
+  @state() rebaseRequired = false;
   @state() validReviewTarget = false;
 
   static override styles = [
@@ -113,6 +114,8 @@ export class SelectReviewTargetDialog extends LitElement {
       return true;
     if (this.reviewTargetOrig != this.reviewTarget || this.reviewFilesOrig != this.reviewFiles)
       return true;
+    if (this.rebaseRequired)
+      return true;
 
     return false;
   }
@@ -126,12 +129,19 @@ export class SelectReviewTargetDialog extends LitElement {
     const targetChanges = this.reviewTarget != this.reviewTargetOrig;
     const filesChanges = this.reviewFiles != this.reviewFilesOrig;
 
+    const createPatchset = this.rebaseRequired ?
+      `Create new rebased patchset` : `Create new patchset`;
+    const numberFiles = pathChanges == 1 ?
+      `one file` : `${pathChanges} files`
+
     if (pathChanges > 0 && targetChanges)
-      return `Create new patchset, updating ${pathChanges} files to ${this.version}`;
+      return `${createPatchset}, updating ${numberFiles} to ${this.version}`;
     if (pathChanges > 0)
-      return `Create new patchset, updating ${pathChanges} files`;
+      return `${createPatchset}, updating ${numberFiles}`;
     if (targetChanges || filesChanges)
-      return `Create new patchset, updating commit message`;
+      return `${createPatchset}, updating commit message`;
+    if (this.rebaseRequired)
+      return createPatchset;
 
     return `No changes necessary`;
   }
@@ -230,6 +240,10 @@ export class SelectReviewTargetDialog extends LitElement {
               "Files will no longer be included in the review",
               this.removedPaths
             )}
+            <section ?hidden="${!this.rebaseRequired}">
+              <span class="title">Rebase</span>
+              Update to new version of parent change
+            </section>
           </div>
 
         </div>
@@ -243,6 +257,7 @@ export class SelectReviewTargetDialog extends LitElement {
     this.followBranch = info.follow_branch;
     this.followVersion = info.follow_version;
     this.validReviewTarget = info.valid_review_target;
+    this.rebaseRequired = info.rebase_required;
 
     if (this.validReviewTarget) {
       this.reviewTarget = info.review_target;
