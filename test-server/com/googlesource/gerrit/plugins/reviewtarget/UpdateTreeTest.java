@@ -60,24 +60,12 @@ public class UpdateTreeTest {
     requestContext.setContext(() -> user);
   }
 
-  private void setUpChange() throws Exception {
-    ChangeInput input = new ChangeInput();
-    input.project = allProjects.get();
-    input.branch = "master";
-    input.newBranch = true;
-    input.subject = "Test change";
-    ChangeInfo info = gApi.changes().create(input).get();
-    ChangeNotes notes = changeNotesFactory.createChecked(allProjects, Change.id(info._number));
-    change = notes.getChange();
-    repo = repoManager.openRepository(allProjects);
-  }
-
   @Before
   public void setUp() throws Exception {
     setUpInjector();
-    setUpChange();
 
-    updateTree = new UpdateTree(repo, change, updateUtil, rebaseUtil);
+    repo = repoManager.openRepository(allProjects);
+    updateTree = new UpdateTree(repo, updateUtil, rebaseUtil);
   }
 
   @After

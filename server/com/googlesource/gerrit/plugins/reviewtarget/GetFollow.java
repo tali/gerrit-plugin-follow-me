@@ -83,8 +83,9 @@ class GetFollow implements RestReadView<ChangeResource> {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
+        UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
+      update.useChange(change);
       update.useReviewTargetFooter(cfg.getReviewTargetFooter());
       resp.validReviewTarget = update.isValidReviewTarget();
       update.useReviewFilesFooter(cfg.getReviewFilesFooter());

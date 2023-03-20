@@ -21,6 +21,7 @@ import com.google.gerrit.entities.BranchNameKey;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.restapi.RestApiException;
+import com.google.gerrit.extensions.restapi.UnprocessableEntityException;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.notedb.ChangeNotes;
@@ -59,7 +60,6 @@ class UpdateTree implements AutoCloseable {
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final Change change;
   private final Repository repo;
   private final RevWalk rw;
   private final ObjectReader reader;
@@ -67,6 +67,7 @@ class UpdateTree implements AutoCloseable {
   private final UpdateUtil updateUtil;
   private final RebaseUtil rebaseUtil;
 
+  private Change change;
   private RevCommit current;
   private RevCommit newParent;
   private RevCommit target;
@@ -77,11 +78,11 @@ class UpdateTree implements AutoCloseable {
   private String reviewFiles;
   private ObjectId updatedTree;
 
-  UpdateTree(Repository repo, Change change, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
-    this.change = requireNonNull(change);
+  UpdateTree(Repository repo, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
     this.updateUtil = requireNonNull(updateUtil);
     this.rebaseUtil = requireNonNull(rebaseUtil);
     this.repo = requireNonNull(repo);
+
     this.inserter = requireNonNull(repo.newObjectInserter());
     this.reader = requireNonNull(inserter.newReader());
     this.rw = new RevWalk(reader);
@@ -91,20 +92,27 @@ class UpdateTree implements AutoCloseable {
     rw.close();
     reader.close();
     inserter.close();
-    repo.close();
+  }
+
+  /**
+   * Select the change which is to be updated
+   */
+  public void useChange(Change change) throws RestApiException, IOException {
+    this.change = requireNonNull(change);
+    current = UpdateUtil.getCurrentCommit(repo, rw, change);
+    if (current.getParentCount() != 1) {
+      throw new UnprocessableEntityException("change must have a single parent");
+    }
+    newParent = rw.parseCommit(current.getParent(0));
   }
 
   public void newReviewTarget(String targetName) throws IOException {
     reviewTarget = targetName;
-    current = UpdateUtil.getCurrentCommit(repo, rw, change);
-    newParent = rw.parseCommit(current.getParent(0));
     target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
     validReviewTarget = target != null;
   }
 
   public void useReviewTargetFooter(String footerName) throws IOException {
-    current = UpdateUtil.getCurrentCommit(repo, rw, change);
-    newParent = rw.parseCommit(current.getParent(0));
     List<String> footerLines = current.getFooterLines(footerName);
     if (footerLines.size() == 0) {
       validReviewTarget = false;
