@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Siemens Mobility GmbH
+// Copyright (C) 2023 Siemens Mobility GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 
-import com.google.gerrit.common.Nullable;
 import com.google.gerrit.entities.BranchNameKey;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
@@ -28,8 +27,6 @@ import com.google.gerrit.server.notedb.ChangeNotes;
 import com.google.gerrit.server.update.UpdateException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -45,7 +42,6 @@ import org.eclipse.jgit.lib.MutableObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.ignore.FastIgnoreRule;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -74,7 +70,7 @@ class UpdateTree implements AutoCloseable {
   private RevCommit followBranch;
   private String reviewTarget;
   boolean validReviewTarget;
-  private List<FastIgnoreRule> reviewRules;
+  private ReviewFilter reviewFilter;
   private String reviewFiles;
   private ObjectId updatedTree;
 
@@ -138,19 +134,9 @@ class UpdateTree implements AutoCloseable {
     return validReviewTarget;
   }
 
-  private void newReviewFileRules(List<String> lines) {
-    List<FastIgnoreRule> rules = new ArrayList<>();
-    for (String line : lines) {
-      line = line.strip();
-      if (line.isEmpty()) continue;
-      rules.add(new FastIgnoreRule(line));
-    }
-    reviewRules = rules;
-  }
-
   public void newReviewFiles(String lines) {
     reviewFiles = lines;
-    newReviewFileRules(Arrays.asList(lines.split("\n")));
+    reviewFilter = new ReviewFilter(lines);
   }
 
   /**
@@ -159,29 +145,11 @@ class UpdateTree implements AutoCloseable {
   public void useReviewFilesFooter(String footerName) {
     List<String> lines = current.getFooterLines(footerName);
     reviewFiles = String.join("\n", lines);
-    newReviewFileRules(lines);
+    reviewFilter = new ReviewFilter(lines);
   }
 
   public String getReviewFiles() {
     return reviewFiles;
-  }
-
-  enum Selected { NO_MATCH, POSITIVE, NEGATIVE }
-
-  /**
-   * check if this path matches our given filter
-   */
-  Selected isPathToBeReviewed(String path, boolean isDirectory) {
-    // Parse rules in the reverse order that they were read because later
-    // rules have higher priority
-    for (int i = reviewRules.size() - 1; i > -1; i--) {
-      FastIgnoreRule rule = reviewRules.get(i);
-      if (rule.isMatch(path, isDirectory, true)) {
-        return rule.getResult() ? Selected.POSITIVE : Selected.NEGATIVE;
-      }
-    }
-    // no rule matches
-    return Selected.NO_MATCH;
   }
 
   boolean rebaseWhenNecessary(PatchSet patchset) throws IOException {
@@ -200,7 +168,7 @@ class UpdateTree implements AutoCloseable {
    */
   void rewritePaths() throws IOException {
     RevTree targetTree = rw.parseTree(target.getTree());
-    if (reviewRules.size() == 0) {
+    if (reviewFilter.matchAll()) {
       // Without a Review-Files specification, use the whole Review-Target
       this.updatedTree = targetTree;
       return;
@@ -222,14 +190,14 @@ class UpdateTree implements AutoCloseable {
       int id;
       boolean isSubtree = walk.isSubtree();
       String path = walk.getPathString();
-      Selected selected = isPathToBeReviewed(path, isSubtree);
+      ReviewFilter.Selected selected = reviewFilter.isPathToBeReviewed(path, isSubtree);
 
-      if (selected == Selected.POSITIVE) {
+      if (selected == ReviewFilter.Selected.POSITIVE) {
         id = idTar;
       } else {
         id = idPar;
       }
-      if (isSubtree && selected == Selected.NO_MATCH) {
+      if (isSubtree && selected == ReviewFilter.Selected.NO_MATCH) {
         // not decided yet, have to check individual contents of tree
         walk.enterSubtree();
       } else if (isSubtree) {
