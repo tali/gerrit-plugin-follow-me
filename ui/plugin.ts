@@ -54,5 +54,9 @@ window.Gerrit.install(plugin => {
       dialog.popupApi = popupApi;
       openDialog.appendContent(dialog);
     });
+    // hide actions which would mess with our managed changes
+    actions.setActionHidden(ActionType.CHANGE, 'edit', true);
+    actions.setActionHidden(ActionType.CHANGE, 'rebase', true);
+    actions.setActionHidden(ActionType.REVISION, 'cherrypick', true);
   });
 });
