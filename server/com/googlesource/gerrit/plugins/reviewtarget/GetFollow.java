@@ -86,9 +86,6 @@ class GetFollow implements RestReadView<ChangeResource> {
         UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
       update.useChange(change);
-      update.useReviewTargetFooter(cfg.getReviewTargetFooter());
-      resp.validReviewTarget = update.isValidReviewTarget();
-      update.useReviewFilesFooter(cfg.getReviewFilesFooter());
 
       resp.followBranch = cfg.getFollowBranch();
       update.useFollowBranch(cfg.getFollowBranch());

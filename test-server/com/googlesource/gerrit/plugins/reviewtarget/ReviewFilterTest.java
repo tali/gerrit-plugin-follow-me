@@ -5,8 +5,6 @@ import org.junit.Test;
 import static com.google.common.truth.Truth.assertThat;
 
 public class ReviewFilterTest {
-  private ReviewFilter reviewFilter;
-
   @Test
   public void isPathToBeReviewed_1() {
     var reviewFilter = new ReviewFilter("src");

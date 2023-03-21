@@ -29,6 +29,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class UpdateUtilTest {
 
+  @Mock private Configuration cfg;
   @Mock private PatchSetInserter.Factory patchSetInserterFactory;
   @Mock private BatchUpdate.Factory updateFactory;
   @Mock private NotifyResolver notifyResolver;
@@ -38,6 +39,7 @@ public class UpdateUtilTest {
   @Before
   public void setUp() {
     updateUtil = new UpdateUtil(
+        cfg,
         patchSetInserterFactory,
         updateFactory,
         notifyResolver);

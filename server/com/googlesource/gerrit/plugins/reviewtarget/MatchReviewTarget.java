@@ -44,8 +44,6 @@ public class MatchReviewTarget {
         UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
       update.useChange(change);
-      update.useReviewTargetFooter(cfg.getReviewTargetFooter());
-      update.useReviewFilesFooter(cfg.getReviewFilesFooter());
 
       if (!update.isValidReviewTarget()) {
         return false;

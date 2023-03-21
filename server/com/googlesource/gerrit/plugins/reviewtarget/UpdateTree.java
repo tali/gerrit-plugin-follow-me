@@ -69,9 +69,10 @@ class UpdateTree implements AutoCloseable {
   private RevCommit target;
   private RevCommit followBranch;
   private String reviewTarget;
-  boolean validReviewTarget;
-  private ReviewFilter reviewFilter;
   private String reviewFiles;
+  private ReviewFilter reviewFilter;
+  private boolean reviewTargetChanged;
+  private boolean reviewFilesChanged;
   private ObjectId updatedTree;
 
   UpdateTree(Repository repo, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
@@ -100,23 +101,27 @@ class UpdateTree implements AutoCloseable {
       throw new UnprocessableEntityException("change must have a single parent");
     }
     newParent = rw.parseCommit(current.getParent(0));
+    reviewTarget = updateUtil.getReviewTarget(current);
+    target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
+    List<String> lines = updateUtil.getReviewFiles(current);
+    reviewFiles = String.join("\n", lines);
+    reviewFilter = new ReviewFilter(lines);
   }
 
   public void newReviewTarget(String targetName) throws IOException {
+    if (reviewTarget.equals(targetName))
+      return;
     reviewTarget = targetName;
+    reviewTargetChanged = true;
     target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
-    validReviewTarget = target != null;
   }
 
-  public void useReviewTargetFooter(String footerName) throws IOException {
-    List<String> footerLines = current.getFooterLines(footerName);
-    if (footerLines.size() == 0) {
-      validReviewTarget = false;
-      return;
-    }
-    reviewTarget = footerLines.get(0);
-    target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
-    validReviewTarget = target != null;
+  public String getReviewTarget() {
+    return reviewTarget;
+  }
+
+  public boolean isValidReviewTarget() {
+    return target != null;
   }
 
   public void useFollowBranch(String branchName) throws IOException {
@@ -126,16 +131,11 @@ class UpdateTree implements AutoCloseable {
     }
   }
 
-  public String getReviewTarget() {
-    return reviewTarget;
-  }
-
-  public boolean isValidReviewTarget() {
-    return validReviewTarget;
-  }
-
   public void newReviewFiles(String lines) {
+    if (reviewFiles.equals(lines))
+      return;
     reviewFiles = lines;
+    reviewFilesChanged = true;
     reviewFilter = new ReviewFilter(lines);
   }
 
