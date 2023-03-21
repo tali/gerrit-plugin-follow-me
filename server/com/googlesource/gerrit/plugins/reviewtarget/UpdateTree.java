@@ -180,7 +180,7 @@ class UpdateTree implements AutoCloseable {
     try {
       // find a new parent commit based on new version of parent change/branch
       BranchNameKey branch = change.getDest();
-      ObjectId baseId = rebaseUtil.findBaseRevision(patchset, branch, repo, rw);
+      ObjectId baseId = rebaseUtil.findBaseRevision(patchset, branch, repo, rw, true);
       newParent = rw.parseCommit(baseId);
       return true;
     } catch (RestApiException e) {}
