@@ -148,7 +148,7 @@ class UpdateUtil {
   public int createPatchSet(
         Repository repo, RevWalk rw, ObjectInserter inserter,
         CurrentUser user,
-        Change change, RevCommit updated, String patchSetMsg,
+        Change change, RevCommit updated, String patchSetDesc, String patchSetMsg,
         ChangeNotes notes
   ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     PatchSet.Id psId = ChangeUtil.nextPatchSetId(repo, change.currentPatchSetId());
@@ -161,6 +161,7 @@ class UpdateUtil {
         patchSetInserterFactory
             .create(notes, psId, updated)
             .setSendEmail(!change.isWorkInProgress())
+            .setDescription(patchSetDesc)
             .setMessage(message);
 
     try (BatchUpdate bu = updateFactory.create(change.getProject(), user, TimeUtil.now())) {

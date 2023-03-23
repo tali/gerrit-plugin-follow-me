@@ -96,10 +96,12 @@ class GetFollow implements RestReadView<ChangeResource> {
         return Response.ok(resp);
       }
 
+      update.rebaseWhenNecessary(rsrc.getNotes().getCurrentPatchSet());
+
       resp.reviewTarget = update.getReviewTarget();
       resp.reviewFiles = update.getReviewFiles();
       resp.version = update.getTargetVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
-      resp.rebaseRequired = update.rebaseWhenNecessary(rsrc.getNotes().getCurrentPatchSet());
+      resp.rebaseRequired = update.isRebased();
     }
     return Response.ok(resp);
   }

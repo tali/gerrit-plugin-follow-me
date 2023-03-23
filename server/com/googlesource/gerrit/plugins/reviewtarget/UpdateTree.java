@@ -16,6 +16,7 @@ package com.googlesource.gerrit.plugins.reviewtarget;
 
 import com.google.common.flogger.FluentLogger;
 
+import com.google.gerrit.common.Nullable;
 import com.google.gerrit.entities.BranchNameKey;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
@@ -71,6 +72,8 @@ class UpdateTree implements AutoCloseable {
   private String reviewTarget;
   private String reviewFiles;
   private ReviewFilter reviewFilter;
+  private boolean treeChanged;
+  private boolean parentChanged;
   private boolean reviewTargetChanged;
   private boolean reviewFilesChanged;
   private ObjectId updatedTree;
@@ -152,15 +155,18 @@ class UpdateTree implements AutoCloseable {
     return reviewFiles;
   }
 
-  boolean rebaseWhenNecessary(PatchSet patchset) throws IOException {
+  void rebaseWhenNecessary(PatchSet patchset) throws IOException {
     try {
       // find a new parent commit based on new version of parent change/branch
       BranchNameKey branch = change.getDest();
       ObjectId baseId = rebaseUtil.findBaseRevision(patchset, branch, repo, rw);
       newParent = rw.parseCommit(baseId);
-      return true;
+      parentChanged = true;
     } catch (RestApiException e) {}
-    return false;
+  }
+
+  boolean isRebased() {
+    return parentChanged;
   }
 
   /**
@@ -219,6 +225,7 @@ class UpdateTree implements AutoCloseable {
     builder.finish();
 
     this.updatedTree = cache.writeTree(inserter);
+    this.treeChanged = !updatedTree.equals(current.getTree());
   }
 
   boolean hasCurrentPaths() throws IOException {
@@ -301,20 +308,28 @@ class UpdateTree implements AutoCloseable {
   ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     String currentMessage = current.getFullMessage();
     String message = getUpdatedMessage(currentMessage, reviewTargetFooter, reviewFilesFooter);
-    boolean sameMsg = message.equals(current.getFullMessage());
-    boolean sameTree = updatedTree.equals(current.getTree());
-    boolean sameParent = newParent.equals(current.getParent(0));
+    boolean sameMsg = message.equals(currentMessage);
+    boolean sameTree = !treeChanged;
+    boolean sameParent = !parentChanged;
 
     if (sameMsg && sameTree && sameParent) {
       return 0;
     }
 
     RevCommit updated = getUpdatedCommit(user, message);
-    String patchSetMsg = getPatchSetMessage(sameTree);
+    String patchSetDesc = getPatchSetDescription();
+    String patchSetMsg = getPatchSetMessage();
 
-    return updateUtil.createPatchSet(repo, rw, inserter, user, change, updated, patchSetMsg, notes);
+    return updateUtil.createPatchSet(repo, rw, inserter, user, change, updated, patchSetDesc, patchSetMsg, notes);
   }
 
+  /**
+   * Get the commit message for the updated commit.
+   * @param original the old message
+   * @param reviewTargetFooter the Review-Target: footer to insert
+   * @param reviewFilesFooter the Review-Files: footer to insert
+   * @return the updated message
+   */
   private String getUpdatedMessage(String original, String reviewTargetFooter, String reviewFilesFooter) {
     String message = original;
 
@@ -324,12 +339,42 @@ class UpdateTree implements AutoCloseable {
     return message;
   }
 
-  private String getPatchSetMessage(boolean sameTree) {
-    if (sameTree) {
-      return "Updated commit message.";
+  /**
+   * Get the message which is shown in the change log
+   */
+  private String getPatchSetMessage() {
+    if (reviewTargetChanged && reviewFilesChanged) {
+      return "Updated Review-Target " + reviewTarget + " and Review-Files";
     }
+    if (reviewTargetChanged) {
+      return "Updated Review-Target " + reviewTarget;
+    }
+    if (reviewFilesChanged) {
+      return "Updated Review-Files";
+    }
+    if (treeChanged) {
+      return "Updated to match current Review-Target " + reviewTarget;
+    }
+    if (parentChanged) {
+      return "Rebased to new parent change";
+    }
+    return "Updated commit message";
+  }
 
-    return "Updated files based on " + reviewTarget + ".";
+  /**
+   * Get the short description which is shown in the patchset selection drop-down
+   */
+  private @Nullable String getPatchSetDescription() {
+    if (reviewTargetChanged) {
+      return "Review-Target " + reviewTarget;
+    }
+    if (reviewFilesChanged) {
+      return "Changed Review-Files";
+    }
+    if (parentChanged) {
+      return "Rebase";
+    }
+    return null;
   }
 
   private RevCommit getUpdatedCommit(CurrentUser user, String message) throws IOException {
