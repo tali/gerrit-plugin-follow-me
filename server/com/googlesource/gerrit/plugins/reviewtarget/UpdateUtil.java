@@ -21,6 +21,7 @@ import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
 import com.google.gerrit.extensions.restapi.RestApiException;
+import com.google.gerrit.extensions.restapi.UnprocessableEntityException;
 import com.google.gerrit.server.ChangeUtil;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.NotifyResolver;
@@ -33,11 +34,9 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
 import java.io.IOException;
+import java.util.List;
 
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectInserter;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.errors.ConfigInvalidException;
@@ -50,15 +49,18 @@ class UpdateUtil {
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
+  private final Configuration cfg;
   private final PatchSetInserter.Factory patchSetInserterFactory;
   private final NotifyResolver notifyResolver;
   private final BatchUpdate.Factory updateFactory;
 
   @Inject
   UpdateUtil(
+      Configuration cfg,
       PatchSetInserter.Factory patchSetInserterFactory,
       BatchUpdate.Factory updateFactory,
       NotifyResolver notifyResolver) {
+    this.cfg = requireNonNull(cfg);
     this.patchSetInserterFactory = requireNonNull(patchSetInserterFactory);
     this.updateFactory = requireNonNull(updateFactory);
     this.notifyResolver = requireNonNull(notifyResolver);
@@ -74,6 +76,20 @@ class UpdateUtil {
       return null;
 
     return rw.parseCommit(refId);
+  }
+
+  public String getReviewTarget(RevCommit current) throws RestApiException {
+    String footerName = cfg.getReviewTargetFooter();
+    List<String> footerLines = current.getFooterLines(footerName);
+    if (footerLines.size() != 1) {
+      throw new UnprocessableEntityException("need exactly one Review-Target footer");
+    }
+    return footerLines.get(0);
+  }
+
+  public List<String> getReviewFiles(RevCommit current) {
+    String footerName = cfg.getReviewFilesFooter();
+    return current.getFooterLines(footerName);
   }
 
   private boolean hasChangeId(String message, int start) {
@@ -132,7 +148,7 @@ class UpdateUtil {
   public int createPatchSet(
         Repository repo, RevWalk rw, ObjectInserter inserter,
         CurrentUser user,
-        Change change, RevCommit updated, String patchSetMsg,
+        Change change, RevCommit updated, String patchSetDesc, String patchSetMsg,
         ChangeNotes notes
   ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     PatchSet.Id psId = ChangeUtil.nextPatchSetId(repo, change.currentPatchSetId());
@@ -145,6 +161,7 @@ class UpdateUtil {
         patchSetInserterFactory
             .create(notes, psId, updated)
             .setSendEmail(!change.isWorkInProgress())
+            .setDescription(patchSetDesc)
             .setMessage(message);
 
     try (BatchUpdate bu = updateFactory.create(change.getProject(), user, TimeUtil.now())) {

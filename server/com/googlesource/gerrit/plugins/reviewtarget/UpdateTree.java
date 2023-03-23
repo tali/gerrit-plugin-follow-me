@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Siemens Mobility GmbH
+// Copyright (C) 2023 Siemens Mobility GmbH
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,14 +21,13 @@ import com.google.gerrit.entities.BranchNameKey;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.PatchSet;
 import com.google.gerrit.extensions.restapi.RestApiException;
+import com.google.gerrit.extensions.restapi.UnprocessableEntityException;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.notedb.ChangeNotes;
 import com.google.gerrit.server.update.UpdateException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -44,7 +43,6 @@ import org.eclipse.jgit.lib.MutableObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.ignore.FastIgnoreRule;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -59,7 +57,6 @@ class UpdateTree implements AutoCloseable {
 
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final Change change;
   private final Repository repo;
   private final RevWalk rw;
   private final ObjectReader reader;
@@ -67,21 +64,25 @@ class UpdateTree implements AutoCloseable {
   private final UpdateUtil updateUtil;
   private final RebaseUtil rebaseUtil;
 
+  private Change change;
   private RevCommit current;
   private RevCommit newParent;
   private RevCommit target;
   private RevCommit followBranch;
   private String reviewTarget;
-  boolean validReviewTarget;
-  private List<FastIgnoreRule> reviewRules;
   private String reviewFiles;
+  private ReviewFilter reviewFilter;
+  private boolean treeChanged;
+  private boolean parentChanged;
+  private boolean reviewTargetChanged;
+  private boolean reviewFilesChanged;
   private ObjectId updatedTree;
 
-  UpdateTree(Repository repo, Change change, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
-    this.change = requireNonNull(change);
+  UpdateTree(Repository repo, UpdateUtil updateUtil, RebaseUtil rebaseUtil) {
     this.updateUtil = requireNonNull(updateUtil);
     this.rebaseUtil = requireNonNull(rebaseUtil);
     this.repo = requireNonNull(repo);
+
     this.inserter = requireNonNull(repo.newObjectInserter());
     this.reader = requireNonNull(inserter.newReader());
     this.rw = new RevWalk(reader);
@@ -91,28 +92,39 @@ class UpdateTree implements AutoCloseable {
     rw.close();
     reader.close();
     inserter.close();
-    repo.close();
+  }
+
+  /**
+   * Select the change which is to be updated
+   */
+  public void useChange(Change change) throws RestApiException, IOException {
+    this.change = requireNonNull(change);
+    current = UpdateUtil.getCurrentCommit(repo, rw, change);
+    if (current.getParentCount() != 1) {
+      throw new UnprocessableEntityException("change must have a single parent");
+    }
+    newParent = rw.parseCommit(current.getParent(0));
+    reviewTarget = updateUtil.getReviewTarget(current);
+    target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
+    List<String> lines = updateUtil.getReviewFiles(current);
+    reviewFiles = String.join("\n", lines);
+    reviewFilter = new ReviewFilter(lines);
   }
 
   public void newReviewTarget(String targetName) throws IOException {
+    if (reviewTarget.equals(targetName))
+      return;
     reviewTarget = targetName;
-    current = UpdateUtil.getCurrentCommit(repo, rw, change);
-    newParent = rw.parseCommit(current.getParent(0));
+    reviewTargetChanged = true;
     target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
-    validReviewTarget = target != null;
   }
 
-  public void useReviewTargetFooter(String footerName) throws IOException {
-    current = UpdateUtil.getCurrentCommit(repo, rw, change);
-    newParent = rw.parseCommit(current.getParent(0));
-    List<String> footerLines = current.getFooterLines(footerName);
-    if (footerLines.size() == 0) {
-      validReviewTarget = false;
-      return;
-    }
-    reviewTarget = footerLines.get(0);
-    target = updateUtil.getReferenceCommit(repo, rw, reviewTarget);
-    validReviewTarget = target != null;
+  public String getReviewTarget() {
+    return reviewTarget;
+  }
+
+  public boolean isValidReviewTarget() {
+    return target != null;
   }
 
   public void useFollowBranch(String branchName) throws IOException {
@@ -122,27 +134,12 @@ class UpdateTree implements AutoCloseable {
     }
   }
 
-  public String getReviewTarget() {
-    return reviewTarget;
-  }
-
-  public boolean isValidReviewTarget() {
-    return validReviewTarget;
-  }
-
-  private void newReviewFileRules(List<String> lines) {
-    List<FastIgnoreRule> rules = new ArrayList<>();
-    for (String line : lines) {
-      line = line.strip();
-      if (line.isEmpty()) continue;
-      rules.add(new FastIgnoreRule(line));
-    }
-    reviewRules = rules;
-  }
-
   public void newReviewFiles(String lines) {
+    if (reviewFiles.equals(lines))
+      return;
     reviewFiles = lines;
-    newReviewFileRules(Arrays.asList(lines.split("\n")));
+    reviewFilesChanged = true;
+    reviewFilter = new ReviewFilter(lines);
   }
 
   /**
@@ -151,40 +148,25 @@ class UpdateTree implements AutoCloseable {
   public void useReviewFilesFooter(String footerName) {
     List<String> lines = current.getFooterLines(footerName);
     reviewFiles = String.join("\n", lines);
-    newReviewFileRules(lines);
+    reviewFilter = new ReviewFilter(lines);
   }
 
   public String getReviewFiles() {
     return reviewFiles;
   }
 
-  enum Selected { NO_MATCH, POSITIVE, NEGATIVE }
-
-  /**
-   * check if this path matches our given filter
-   */
-  Selected isPathToBeReviewed(String path, boolean isDirectory) {
-    // Parse rules in the reverse order that they were read because later
-    // rules have higher priority
-    for (int i = reviewRules.size() - 1; i > -1; i--) {
-      FastIgnoreRule rule = reviewRules.get(i);
-      if (rule.isMatch(path, isDirectory, true)) {
-        return rule.getResult() ? Selected.POSITIVE : Selected.NEGATIVE;
-      }
-    }
-    // no rule matches
-    return Selected.NO_MATCH;
-  }
-
-  boolean rebaseWhenNecessary(PatchSet patchset) throws IOException {
+  void rebaseWhenNecessary(PatchSet patchset) throws IOException {
     try {
       // find a new parent commit based on new version of parent change/branch
       BranchNameKey branch = change.getDest();
       ObjectId baseId = rebaseUtil.findBaseRevision(patchset, branch, repo, rw, true);
       newParent = rw.parseCommit(baseId);
-      return true;
+      parentChanged = true;
     } catch (RestApiException e) {}
-    return false;
+  }
+
+  boolean isRebased() {
+    return parentChanged;
   }
 
   /**
@@ -192,7 +174,7 @@ class UpdateTree implements AutoCloseable {
    */
   void rewritePaths() throws IOException {
     RevTree targetTree = rw.parseTree(target.getTree());
-    if (reviewRules.size() == 0) {
+    if (reviewFilter.matchAll()) {
       // Without a Review-Files specification, use the whole Review-Target
       this.updatedTree = targetTree;
       return;
@@ -214,14 +196,14 @@ class UpdateTree implements AutoCloseable {
       int id;
       boolean isSubtree = walk.isSubtree();
       String path = walk.getPathString();
-      Selected selected = isPathToBeReviewed(path, isSubtree);
+      ReviewFilter.Selected selected = reviewFilter.isPathToBeReviewed(path, isSubtree);
 
-      if (selected == Selected.POSITIVE) {
+      if (selected == ReviewFilter.Selected.POSITIVE) {
         id = idTar;
       } else {
         id = idPar;
       }
-      if (isSubtree && selected == Selected.NO_MATCH) {
+      if (isSubtree && selected == ReviewFilter.Selected.NO_MATCH) {
         // not decided yet, have to check individual contents of tree
         walk.enterSubtree();
       } else if (isSubtree) {
@@ -243,6 +225,7 @@ class UpdateTree implements AutoCloseable {
     builder.finish();
 
     this.updatedTree = cache.writeTree(inserter);
+    this.treeChanged = !updatedTree.equals(current.getTree());
   }
 
   boolean hasCurrentPaths() throws IOException {
@@ -325,20 +308,28 @@ class UpdateTree implements AutoCloseable {
   ) throws IOException, ConfigInvalidException, UpdateException, RestApiException {
     String currentMessage = current.getFullMessage();
     String message = getUpdatedMessage(currentMessage, reviewTargetFooter, reviewFilesFooter);
-    boolean sameMsg = message.equals(current.getFullMessage());
-    boolean sameTree = updatedTree.equals(current.getTree());
-    boolean sameParent = newParent.equals(current.getParent(0));
+    boolean sameMsg = message.equals(currentMessage);
+    boolean sameTree = !treeChanged;
+    boolean sameParent = !parentChanged;
 
     if (sameMsg && sameTree && sameParent) {
       return 0;
     }
 
     RevCommit updated = getUpdatedCommit(user, message);
-    String patchSetMsg = getPatchSetMessage(sameTree);
+    String patchSetDesc = getPatchSetDescription();
+    String patchSetMsg = getPatchSetMessage();
 
-    return updateUtil.createPatchSet(repo, rw, inserter, user, change, updated, patchSetMsg, notes);
+    return updateUtil.createPatchSet(repo, rw, inserter, user, change, updated, patchSetDesc, patchSetMsg, notes);
   }
 
+  /**
+   * Get the commit message for the updated commit.
+   * @param original the old message
+   * @param reviewTargetFooter the Review-Target: footer to insert
+   * @param reviewFilesFooter the Review-Files: footer to insert
+   * @return the updated message
+   */
   private String getUpdatedMessage(String original, String reviewTargetFooter, String reviewFilesFooter) {
     String message = original;
 
@@ -348,12 +339,42 @@ class UpdateTree implements AutoCloseable {
     return message;
   }
 
-  private String getPatchSetMessage(boolean sameTree) {
-    if (sameTree) {
-      return "Updated commit message.";
+  /**
+   * Get the message which is shown in the change log
+   */
+  private String getPatchSetMessage() {
+    if (reviewTargetChanged && reviewFilesChanged) {
+      return "Updated Review-Target " + reviewTarget + " and Review-Files";
     }
+    if (reviewTargetChanged) {
+      return "Updated Review-Target " + reviewTarget;
+    }
+    if (reviewFilesChanged) {
+      return "Updated Review-Files";
+    }
+    if (treeChanged) {
+      return "Updated to match current Review-Target " + reviewTarget;
+    }
+    if (parentChanged) {
+      return "Rebased to new parent change";
+    }
+    return "Updated commit message";
+  }
 
-    return "Updated files based on " + reviewTarget + ".";
+  /**
+   * Get the short description which is shown in the patchset selection drop-down
+   */
+  private @Nullable String getPatchSetDescription() {
+    if (reviewTargetChanged) {
+      return "Review-Target " + reviewTarget;
+    }
+    if (reviewFilesChanged) {
+      return "Changed Review-Files";
+    }
+    if (parentChanged) {
+      return "Rebase";
+    }
+    return null;
   }
 
   private RevCommit getUpdatedCommit(CurrentUser user, String message) throws IOException {

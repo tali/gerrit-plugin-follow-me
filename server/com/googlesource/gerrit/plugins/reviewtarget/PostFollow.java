@@ -92,18 +92,16 @@ class PostFollow implements RestModifyView<ChangeResource, Input> {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
+        UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
+      update.useChange(change);
+
       if (input.newReviewTarget != null) {
         update.newReviewTarget(input.newReviewTarget);
-      } else {
-        update.useReviewTargetFooter(cfg.getReviewTargetFooter());
       }
 
       if (input.newReviewFiles != null) {
         update.newReviewFiles(input.newReviewFiles);
-      } else {
-        update.useReviewFilesFooter(cfg.getReviewFilesFooter());
       }
 
       resp.validReviewTarget = update.isValidReviewTarget();

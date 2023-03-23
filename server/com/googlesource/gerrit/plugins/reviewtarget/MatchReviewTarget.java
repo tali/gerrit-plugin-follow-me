@@ -4,6 +4,7 @@ import com.google.common.flogger.FluentLogger;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gerrit.entities.Change;
 import com.google.gerrit.exceptions.StorageException;
+import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gerrit.server.change.RebaseUtil;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.inject.Inject;
@@ -40,10 +41,9 @@ public class MatchReviewTarget {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
+        UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
-      update.useReviewTargetFooter(cfg.getReviewTargetFooter());
-      update.useReviewFilesFooter(cfg.getReviewFilesFooter());
+      update.useChange(change);
 
       if (!update.isValidReviewTarget()) {
         return false;
@@ -52,7 +52,7 @@ public class MatchReviewTarget {
       update.rewritePaths();
       return update.hasCurrentPaths();
 
-    } catch (StorageException | UncheckedExecutionException | IOException e) {
+    } catch (RestApiException | StorageException | UncheckedExecutionException | IOException e) {
       warnWithOccasionalStackTrace(
           e,
           "failure checking Review-Target footer for change %s: %s",

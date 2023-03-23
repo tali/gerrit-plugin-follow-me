@@ -83,11 +83,9 @@ class GetFollow implements RestReadView<ChangeResource> {
 
     try (
         Repository repo = gitManager.openRepository(change.getProject());
-        UpdateTree update = new UpdateTree(repo, change, updateUtil, rebaseUtil);
+        UpdateTree update = new UpdateTree(repo, updateUtil, rebaseUtil);
     ) {
-      update.useReviewTargetFooter(cfg.getReviewTargetFooter());
-      resp.validReviewTarget = update.isValidReviewTarget();
-      update.useReviewFilesFooter(cfg.getReviewFilesFooter());
+      update.useChange(change);
 
       resp.followBranch = cfg.getFollowBranch();
       update.useFollowBranch(cfg.getFollowBranch());
@@ -98,10 +96,12 @@ class GetFollow implements RestReadView<ChangeResource> {
         return Response.ok(resp);
       }
 
+      update.rebaseWhenNecessary(rsrc.getNotes().getCurrentPatchSet());
+
       resp.reviewTarget = update.getReviewTarget();
       resp.reviewFiles = update.getReviewFiles();
       resp.version = update.getTargetVersion(cfg.getVersionPrefix(), cfg.getVersionDropPrefix());
-      resp.rebaseRequired = update.rebaseWhenNecessary(rsrc.getNotes().getCurrentPatchSet());
+      resp.rebaseRequired = update.isRebased();
     }
     return Response.ok(resp);
   }
