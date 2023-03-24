@@ -36,7 +36,7 @@ Individual review of the original changes may be too fine-grained because it
 would require to review intermittent states which never made it into the final
 version.
 On the other hand, just importing a new version and reviewing the complete diff
-as one change may not viable.
+as one change may not be viable.
 
 So we need a way to split these reviews into multiple smaller parts.
 Depending on the codebase and the changes made, these smaller reviews can
@@ -66,7 +66,7 @@ All matching files will be part of the review, i.e. will be copied from to-be-re
 
 Same syntax as `.gitignore` lines.
 Multiple entries can be combined by repeating the `Review-Files:` footer.
-When no Revie
+When no Reviev-Files filter is given, then the complete contents will be included in the review.
 
 Examples:
 

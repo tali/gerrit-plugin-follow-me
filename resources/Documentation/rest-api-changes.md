@@ -9,6 +9,7 @@ Returns a JSON object with the following properties:
 
 * `on_review_branch`: boolean, whether the change is on the right branch. Used to show/hide the 'SELECT' button.
 * `valid_review_target`: boolean, whether the change has a valid `Review-Target:` footer.
+* `rebase_requested`: boolean, whether the parent of the commit needs to be updated.
 * `review_target`: string, the contents of the `Review-Target:` footer.
 * `version`: string, the resolved version of `review_target`.
 * `follow_branch`: string, the contents of the configuration key `plugins.followme.followBranch`.
@@ -18,7 +19,6 @@ Returns a JSON object with the following properties:
 ### POST /changes/.../follow
 
 Update the change or determine what would be changed with an update.
-Uses a JSON object as input and t
 Creates a new patchset with the update if requested to do so.
 
 The following input JSON object properties are supported:
