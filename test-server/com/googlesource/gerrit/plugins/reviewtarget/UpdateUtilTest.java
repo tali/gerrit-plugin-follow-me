@@ -110,4 +110,25 @@ public class UpdateUtilTest {
     assertThat(updateUtil.insertFooters("A\n", "B", "\n with whitespace \n "))
     .isEqualTo("A\n\nB: with whitespace\n");
   }
+
+  @Test
+  public void insertFooters_noNewline1() {
+    var oldMessage = "A";
+    assertThat(updateUtil.insertFooters(oldMessage, "B", "C"))
+    .isEqualTo("A\n\nB: C\n");
+  }
+
+  @Test
+  public void insertFooters_noNewline2() {
+    var oldMessage = "A\n\nChange-Id: footer\nB: C";
+    assertThat(updateUtil.insertFooters(oldMessage, "B", "C"))
+    .isEqualTo(oldMessage + "\n");
+  }
+
+  @Test
+  public void insertFooters_noNewline3() {
+    var oldMessage = "A\n\nChange-Id: footer\nB: C\nD: E";
+    assertThat(updateUtil.insertFooters(oldMessage, "B", "C"))
+    .isEqualTo(oldMessage);
+  }
 }

@@ -113,6 +113,10 @@ class UpdateUtil {
       // we already have footers, but not for our key
       message.append(oldMessage);
     }
+    if (message.charAt(message.length()-1) != '\n') {
+      // message did not end with newline, insert one
+      message.append("\n");
+    }
     if (!existingFooter) {
       // start new footer paragraph
       message.append("\n");
@@ -131,6 +135,10 @@ class UpdateUtil {
     while (start >= 0) {
       // skip this line
       start = oldMessage.indexOf("\n", start + 1);
+      if (start < 0) {
+        // already at the end (no newline)
+        break;
+      }
       // copy everything up to the next footer with our key
       int next = oldMessage.indexOf("\n" + key + ":", start);
       if (next > 0) {
