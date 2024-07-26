@@ -43,7 +43,7 @@ Review-Target selection can be changed.
 ### Verify that a change adheres to the review selection
 
 The rules for selecting files are stored in footer lines within the commit message.
-This makes it easy to check that the all relevant files are part of the review commit,
+This makes it easy to check that all relevant files are part of the review commit,
 without having to list all potential files by hand.
 
 When the rule is correct then the user can be sure that any matching files are
@@ -60,9 +60,15 @@ TBD NOT IMPLEMENTED
 
 ### Reparent instead of rebase
 
-TBD NOT IMPLEMENTED
+When updating a change, the parent is automatically updated.
+That is, commits are automatically rebased when necessary.
 
-* **TBD** allow to change the parent of the change without changing the target tree
+The normal Gerrit Rebase command does not work well with changes managed by this plugin.
+It tries to keep merge changes and changes the target tree to keep the diff constant.
+But for our post-commit changes, we have to keep the target tree constant and
+just use the new parent, resulting in a new diff.
+For these changes, normal rebase command is hidden, use the 'Select'/'Update'
+instead to update the commit parent.
 
 
 Example Workflows
